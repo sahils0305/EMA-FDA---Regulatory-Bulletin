@@ -16,7 +16,7 @@ A live, AI-powered regulatory intelligence tool monitoring 8 global health autho
 - 🌍 WHO — World Health Organization
 
 ## What it does
-- Pulls live updates from 8 official regulatory RSS feeds daily
+- Pulls live updates from 8 global regulatory and harmonization body RSS feeds
 - Filters to the most recent 30 days
 - Uses Groq AI (Llama 3.1) to generate plain-language summaries of each update
 - Displays everything as a searchable, filterable live bulletin with per-agency filtering
@@ -36,4 +36,4 @@ Regulatory Affairs professionals spend significant time manually monitoring agen
 Python · feedparser · Groq API (Llama 3.1) · GitHub Actions · GitHub Pages
 
 ## Background
-Built as a portfolio project ahead of an MSc in Process Validation and Regulatory Affairs at The Technological University of The Shannon, Moylish Campus, Limerick, Ireland. Prior experience includes regulatory lifecycle management across GCC, CIS, and observational exposure to EU/US markets at Dabur International Ltd. and Vieco Pharmaceuticals, Dubai.
+Built as a portfolio project ahead of an MSc in Process Validation and Regulatory Affairs at The Technological University of The Shannon, Moylish Campus, Limerick, Ireland. Prior experience includes tenure as regulatory affairs intern at Dabur International Ltd. and a quality control intern at Vieco Pharmaceuticals, Dubai.
