@@ -2,6 +2,9 @@
 
 A live regulatory intelligence tool that automatically fetches, filters, and AI-summarizes the latest updates from the European Medicines Agency (EMA) and the US Food and Drug Administration (FDA).
 
+## 🔗 Live demo
+👉 [View the live bulletin](https://sahils0305.github.io/EMA-FDA---Regulatory-Bulletin/)
+
 ## What it does
 - Pulls live updates from 3 official regulatory RSS feeds (EMA News, EMA Guidelines, FDA Press Releases)
 - Filters to the most recent 30 days only
