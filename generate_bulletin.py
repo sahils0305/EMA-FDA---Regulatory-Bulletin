@@ -28,11 +28,11 @@ FEEDS = [
      "label": "EMA Guidelines", "color": "#FBBF24", "glow": "rgba(251,191,36,0.18)", "bg": "rgba(251,191,36,0.1)"},
     {"url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml",
      "label": "FDA", "color": "#F87171", "glow": "rgba(248,113,113,0.18)", "bg": "rgba(248,113,113,0.1)"},
-    {"url": "https://mhrainspectorate.blog.gov.uk/feed/",
+    {"url": "https://medregs.blog.gov.uk/feed/",
      "label": "MHRA", "color": "#34D399", "glow": "rgba(52,211,153,0.18)", "bg": "rgba(52,211,153,0.1)"},
     {"url": "https://www.tga.gov.au/feeds/article.xml",
      "label": "TGA", "color": "#C084FC", "glow": "rgba(192,132,252,0.18)", "bg": "rgba(192,132,252,0.1)"},
-    {"url": "https://www.canada.ca/en/health-canada/services/drugs-health-products/drug-products/feed.html",
+    {"url": "https://www.canada.ca/content/dam/hc-sc/migration/hc-sc/rss/dhp-mps/prod-eng.xml",
      "label": "Health Canada", "color": "#FB923C", "glow": "rgba(251,146,60,0.18)", "bg": "rgba(251,146,60,0.1)"},
     {"url": "https://www.imdrf.org/news-events/news.xml",
      "label": "IMDRF", "color": "#22D3EE", "glow": "rgba(34,211,238,0.18)", "bg": "rgba(34,211,238,0.1)"},
@@ -44,7 +44,7 @@ cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 all_entries = []
 
 import socket
-socket.setdefaulttimeout(10)
+socket.setdefaulttimeout(25)
 
 for feed_info in FEEDS:
     try:
