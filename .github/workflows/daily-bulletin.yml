@@ -1,0 +1,35 @@
+name: Daily Regulatory Bulletin
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # Runs every day at 7am UTC
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install feedparser groq
+
+      - name: Generate bulletin
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python generate_bulletin.py
+
+      - name: Commit and push updated bulletin
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add index.html
+          git commit -m "Auto-update bulletin $(date +'%Y-%m-%d')"
+          git push
