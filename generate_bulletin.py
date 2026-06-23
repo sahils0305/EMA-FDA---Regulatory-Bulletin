@@ -237,7 +237,7 @@ html = f"""<!DOCTYPE html>
       <span class="hero-tag">FDA Press Releases</span>
       <span class="hero-tag">AI Summarization</span>
       <span class="hero-tag">Auto-updates Daily</span>
-      <span class="hero-tag">MSc RA — TUS Ireland</span>
+      <span class="hero-tag">MSc Process Validation & Regulatory Affairs (Pharmaceuticals) — The Teechnological University of the Shannon, Limerick, Ireland</span>
     </div>
   </div>
 </section>
@@ -261,15 +261,11 @@ html = f"""<!DOCTYPE html>
         </div>
         <div class="pill">
           <div class="pill-label">Background</div>
-          <div class="pill-value">RA Intern — Dabur International Ltd., Dubai<br>RA Intern — Vieco Pharmaceuticals, Dubai</div>
+          <div class="pill-value">RA Intern — Dabur International Ltd., Dubai<br>QC Intern — Vieco Pharmaceuticals, Dubai</div>
         </div>
         <div class="pill">
           <div class="pill-label">Currently</div>
-          <div class="pill-value">Prospective MSc student — Process Validation & Regulatory Affairs, TUS Moylish Campus, Ireland</div>
-        </div>
-        <div class="pill">
-          <div class="pill-label">Markets exposed to</div>
-          <div class="pill-value">GCC, CIS, EU (observational), USA (observational), LATAM (partial)</div>
+          <div class="pill-value">Prospective Student — MSc Process Validation & Regulatory Affairs (Pharmaceuticals), The Technological University of The Shannon, Moylish Campus, Limerick, Ireland</div>
         </div>
       </div>
     </div>
