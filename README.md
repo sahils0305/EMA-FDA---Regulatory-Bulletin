@@ -1,34 +1,39 @@
-# EMA + FDA Regulatory Intelligence Bulletin
+# Regulatory Intelligence Dashboard
 
-A live regulatory intelligence tool that automatically fetches, filters, and AI-summarizes the latest updates from the European Medicines Agency (EMA) and the US Food and Drug Administration (FDA).
+A live, AI-powered regulatory intelligence tool monitoring 8 global health authorities — automatically fetching, filtering, and summarizing the latest updates every day.
 
 ## 🔗 Live demo
-👉 [View the live bulletin](https://sahils0305.github.io/EMA-FDA---Regulatory-Bulletin/)
+👉 [sahils0305.github.io/EMA-FDA---Regulatory-Bulletin](https://sahils0305.github.io/EMA-FDA---Regulatory-Bulletin/)
+
+## Agencies monitored
+- 🇪🇺 EMA — News & Press Releases
+- 🇪🇺 EMA — Regulatory & Procedural Guidelines
+- 🇺🇸 FDA — Press Releases
+- 🇬🇧 MHRA — Inspectorate Updates
+- 🇦🇺 TGA — Therapeutic Goods Administration
+- 🇨🇦 Health Canada — Drug Products
+- 🌍 IMDRF — International Medical Device Regulators Forum
+- 🌍 WHO — World Health Organization
 
 ## What it does
-- Pulls live updates from 3 official regulatory RSS feeds (EMA News, EMA Guidelines, FDA Press Releases)
-- Filters to the most recent 30 days only
-- Uses Groq AI (Llama 3.1) to generate a plain-language one-sentence summary of each update
-- Displays everything as a clean, styled bulletin with source links
+- Pulls live updates from 8 official regulatory RSS feeds daily
+- Filters to the most recent 30 days
+- Uses Groq AI (Llama 3.1) to generate plain-language summaries of each update
+- Displays everything as a searchable, filterable live bulletin with per-agency filtering
+- Features the latest update prominently with full-width display
+- Auto-updates every morning at 7am UTC via GitHub Actions — zero manual input
 
 ## Why I built this
-Regulatory Affairs professionals spend significant time manually monitoring agency websites for updates across multiple markets. This tool automates that monitoring and surfaces what matters, with AI-generated context — reducing the time from "something changed" to "I understand what changed and why it matters."
+Regulatory Affairs professionals spend significant time manually monitoring agency websites for updates across multiple markets. During my internship at Dabur International Ltd. in Dubai, one of my tasks was visiting health authority websites across multiple markets to track herbal and health product regulation updates — one country at a time, entirely manually. This tool automates exactly that, and adds AI-generated context so the update is immediately actionable.
 
-## How to run it
-1. Open `bulletin.ipynb` in Google Colab
-2. Add your Groq API key to Colab Secrets as `GROQ_API_KEY` (free at console.groq.com)
-3. Run the notebook — a fresh bulletin generates in about 1 minute
+## How to run it locally
+1. Clone the repo
+2. Add your Groq API key to a `.env` file as `GROQ_API_KEY`
+3. Run `pip install feedparser groq`
+4. Run `python generate_bulletin.py`
 
 ## Tech stack
-- Python
-- feedparser (RSS ingestion)
-- Groq API / Llama 3.1 (AI summarization)
-- Google Colab (execution environment)
-
-## Data sources
-- [EMA News and Press Releases](https://www.ema.europa.eu/en/news-events/news)
-- [EMA Regulatory and Procedural Guidelines](https://www.ema.europa.eu/en/human-regulatory-overview/research-development/scientific-guidelines)
-- [FDA Press Releases](https://www.fda.gov/news-events/fda-newsroom/press-announcements)
+Python · feedparser · Groq API (Llama 3.1) · GitHub Actions · GitHub Pages
 
 ## Background
-Built as part of a regulatory affairs portfolio ahead of an MSc in Process Validation and Regulatory Affairs (Technological University of the Shannon, 2026). Prior experience as Regulatory Affairs intern in Dabur International Ltd. and Quality Control intern in Vieco Pharmaceuticals
+Built as a portfolio project ahead of an MSc in Process Validation and Regulatory Affairs at The Technological University of The Shannon, Moylish Campus, Limerick, Ireland. Prior experience includes regulatory lifecycle management across GCC, CIS, and observational exposure to EU/US markets at Dabur International Ltd. and Vieco Pharmaceuticals, Dubai.
