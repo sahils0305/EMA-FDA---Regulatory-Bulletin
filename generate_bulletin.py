@@ -42,7 +42,10 @@ FEEDS = [
  
 cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 all_entries = []
- 
+
+import socket
+socket.setdefaulttimeout(10)
+
 for feed_info in FEEDS:
     try:
         feed = feedparser.parse(feed_info["url"])
