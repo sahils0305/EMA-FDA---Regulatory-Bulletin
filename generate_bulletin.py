@@ -4,15 +4,15 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from groq import Groq
-
+ 
 client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
-
+ 
 def summarize_entry(title, description=""):
     prompt = f"""You are a regulatory affairs professional. In one clear sentence, explain what changed and why it matters for RA teams.
-
+ 
 Title: {title}
 Description: {description}
-
+ 
 One sentence summary:"""
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
@@ -20,7 +20,7 @@ One sentence summary:"""
         max_tokens=100
     )
     return response.choices[0].message.content.strip()
-
+ 
 FEEDS = [
     {"url": "https://www.ema.europa.eu/en/news.xml",
      "label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA"},
@@ -29,10 +29,10 @@ FEEDS = [
     {"url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml",
      "label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB"},
 ]
-
+ 
 cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 all_entries = []
-
+ 
 for feed_info in FEEDS:
     feed = feedparser.parse(feed_info["url"])
     for entry in feed.entries:
@@ -50,10 +50,10 @@ for feed_info in FEEDS:
                 })
         except Exception:
             pass
-
+ 
 all_entries.sort(key=lambda e: e["date"], reverse=True)
 print(f"✓ {len(all_entries)} items found — summarizing...")
-
+ 
 for entry in all_entries:
     try:
         entry["summary"] = summarize_entry(entry["title"])
@@ -61,45 +61,104 @@ for entry in all_entries:
     except Exception as e:
         entry["summary"] = "Summary unavailable."
         print(f"Skipped: {e}")
-
-print("✓ Building dashboard...")
-
+ 
+print("✓ Building website...")
+ 
 generated = datetime.now().strftime("%d %b %Y, %H:%M UTC")
 entries_json = json.dumps(all_entries)
-
 ema_news_count = sum(1 for e in all_entries if e["label"] == "EMA News & Press")
 ema_guide_count = sum(1 for e in all_entries if e["label"] == "EMA Guidelines")
 fda_count = sum(1 for e in all_entries if e["label"] == "FDA Press Releases")
-
+ 
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EMA + FDA Regulatory Intelligence Dashboard</title>
+<title>Sahil Subramaniam — Regulatory Intelligence</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  html {{ scroll-behavior: smooth; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F0F2F5; color: #1A1D27; }}
-
-  /* HEADER */
-  .header {{ background: #0B1929; padding: 0 32px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }}
-  .header-inner {{ max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; }}
-  .header-left {{ display: flex; align-items: center; gap: 12px; }}
-  .live-badge {{ background: #16A34A; color: white; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }}
+ 
+  /* NAV */
+  nav {{ position: fixed; top: 0; left: 0; right: 0; z-index: 200; background: rgba(11,25,41,0.97); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.06); }}
+  .nav-inner {{ max-width: 1100px; margin: 0 auto; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; }}
+  .nav-name {{ color: white; font-weight: 600; font-size: 15px; letter-spacing: -0.2px; }}
+  .nav-name span {{ color: #C9A050; }}
+  .nav-links {{ display: flex; gap: 28px; }}
+  .nav-links a {{ color: #8A9BB5; font-size: 13px; text-decoration: none; transition: color 0.2s; }}
+  .nav-links a:hover {{ color: white; }}
+ 
+  /* HERO */
+  .hero {{ background: linear-gradient(135deg, #0B1929 0%, #0F2744 60%, #132F52 100%); min-height: 100vh; display: flex; align-items: center; padding: 100px 32px 80px; position: relative; overflow: hidden; }}
+  .hero::before {{ content: ''; position: absolute; top: -200px; right: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(201,160,80,0.08) 0%, transparent 70%); }}
+  .hero::after {{ content: ''; position: absolute; bottom: -100px; left: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(46,94,168,0.1) 0%, transparent 70%); }}
+  .hero-inner {{ max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }}
+  .hero-eyebrow {{ display: inline-flex; align-items: center; gap: 8px; background: rgba(201,160,80,0.12); border: 1px solid rgba(201,160,80,0.25); color: #C9A050; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 28px; }}
+  .hero-dot {{ width: 6px; height: 6px; background: #C9A050; border-radius: 50%; animation: pulse 2s infinite; }}
+  @keyframes pulse {{ 0%,100% {{ opacity:1; }} 50% {{ opacity:0.3; }} }}
+  .hero h1 {{ font-size: clamp(36px, 5vw, 64px); font-weight: 700; color: white; line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 24px; max-width: 800px; }}
+  .hero h1 span {{ color: #C9A050; }}
+  .hero-sub {{ font-size: 18px; color: #8A9BB5; line-height: 1.7; max-width: 580px; margin-bottom: 40px; }}
+  .hero-actions {{ display: flex; gap: 14px; flex-wrap: wrap; }}
+  .btn-primary {{ background: #C9A050; color: #0B1929; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; transition: all 0.2s; letter-spacing: 0.3px; }}
+  .btn-primary:hover {{ background: #D4AE60; transform: translateY(-1px); }}
+  .btn-ghost {{ border: 1px solid rgba(255,255,255,0.2); color: white; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; text-decoration: none; transition: all 0.2s; }}
+  .btn-ghost:hover {{ border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); }}
+  .hero-tags {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 48px; padding-top: 48px; border-top: 1px solid rgba(255,255,255,0.08); }}
+  .hero-tag {{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #8A9BB5; font-size: 12px; padding: 6px 12px; border-radius: 6px; }}
+ 
+  /* SECTION SHARED */
+  section {{ padding: 80px 32px; }}
+  .section-inner {{ max-width: 1100px; margin: 0 auto; }}
+  .section-label {{ font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #C9A050; font-weight: 600; margin-bottom: 12px; }}
+  .section-title {{ font-size: clamp(26px, 3vw, 38px); font-weight: 700; letter-spacing: -0.8px; line-height: 1.2; margin-bottom: 16px; }}
+  .section-sub {{ font-size: 16px; color: #4B5563; line-height: 1.7; max-width: 600px; }}
+ 
+  /* WHY */
+  .why {{ background: white; }}
+  .why-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; margin-top: 48px; }}
+  .why-story {{ font-size: 15px; color: #374151; line-height: 1.85; }}
+  .why-story p + p {{ margin-top: 16px; }}
+  .why-story strong {{ color: #1A1D27; }}
+  .why-quote {{ background: #F8F9FC; border-left: 3px solid #C9A050; padding: 24px 28px; border-radius: 0 8px 8px 0; }}
+  .why-quote p {{ font-size: 16px; color: #1A1D27; line-height: 1.7; font-style: italic; }}
+  .why-quote cite {{ display: block; margin-top: 12px; font-size: 13px; color: #6B7280; font-style: normal; }}
+  .about-pills {{ display: flex; flex-direction: column; gap: 14px; }}
+  .pill {{ background: #F8F9FC; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px 20px; }}
+  .pill-label {{ font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #9CA3AF; margin-bottom: 4px; }}
+  .pill-value {{ font-size: 14px; color: #1A1D27; font-weight: 500; line-height: 1.4; }}
+ 
+  /* HOW IT WORKS */
+  .how {{ background: #F0F2F5; }}
+  .steps {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; position: relative; }}
+  .steps::before {{ content: ''; position: absolute; top: 28px; left: calc(16.66% + 16px); right: calc(16.66% + 16px); height: 1px; background: repeating-linear-gradient(90deg, #C9A050 0, #C9A050 6px, transparent 6px, transparent 14px); }}
+  .step {{ background: white; border-radius: 12px; padding: 28px 24px; border: 1px solid #E5E7EB; position: relative; }}
+  .step-num {{ width: 44px; height: 44px; background: #0B1929; color: #C9A050; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; margin-bottom: 16px; position: relative; z-index: 1; }}
+  .step h3 {{ font-size: 15px; font-weight: 600; margin-bottom: 8px; }}
+  .step p {{ font-size: 13px; color: #6B7280; line-height: 1.6; }}
+  .step-detail {{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }}
+  .step-tag {{ background: #F3F4F6; color: #374151; font-size: 11px; padding: 3px 8px; border-radius: 4px; }}
+ 
+  /* BULLETIN */
+  .bulletin {{ background: #F0F2F5; padding-top: 0; }}
+  .bulletin-header {{ background: #0B1929; padding: 32px; margin-bottom: 0; }}
+  .bulletin-header-inner {{ max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }}
+  .bulletin-title-group {{ display: flex; align-items: center; gap: 14px; }}
+  .live-badge {{ background: #16A34A; color: white; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }}
   .live-dot {{ width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse 1.5s infinite; }}
-  @keyframes pulse {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.3; }} }}
-  .header-title {{ color: white; font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }}
-  .header-sub {{ color: #C9A050; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }}
-  .header-right {{ color: #6B7A99; font-size: 12px; }}
-
-  /* STATS BAR */
+  .bulletin-title {{ color: white; font-size: 20px; font-weight: 600; }}
+  .bulletin-updated {{ color: #4B5E7A; font-size: 12px; }}
+ 
+  /* STATS */
   .stats-bar {{ background: white; border-bottom: 1px solid #E5E7EB; }}
-  .stats-inner {{ max-width: 1100px; margin: 0 auto; padding: 16px 32px; display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }}
-  .stat {{ display: flex; flex-direction: column; gap: 2px; }}
-  .stat-num {{ font-size: 24px; font-weight: 700; line-height: 1; }}
+  .stats-inner {{ max-width: 1100px; margin: 0 auto; padding: 20px 32px; display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }}
+  .stat {{ display: flex; flex-direction: column; gap: 3px; }}
+  .stat-num {{ font-size: 26px; font-weight: 700; line-height: 1; }}
   .stat-label {{ font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; }}
   .stat-divider {{ width: 1px; height: 36px; background: #E5E7EB; }}
-
+ 
   /* CONTROLS */
   .controls {{ max-width: 1100px; margin: 24px auto 0; padding: 0 32px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }}
   .search-wrap {{ position: relative; flex: 1; min-width: 200px; }}
@@ -109,14 +168,10 @@ html = f"""<!DOCTYPE html>
   .filter-btn {{ padding: 9px 16px; border-radius: 8px; border: 1px solid #E5E7EB; background: white; font-size: 13px; cursor: pointer; transition: all 0.15s; color: #374151; font-weight: 500; }}
   .filter-btn:hover {{ border-color: #9CA3AF; }}
   .filter-btn.active {{ background: #0B1929; color: white; border-color: #0B1929; }}
-
-  /* RESULTS COUNT */
-  .results-info {{ max-width: 1100px; margin: 16px auto 0; padding: 0 32px; font-size: 13px; color: #6B7280; }}
-
+  .results-info {{ max-width: 1100px; margin: 14px auto 0; padding: 0 32px; font-size: 13px; color: #6B7280; }}
+ 
   /* GRID */
-  .grid {{ max-width: 1100px; margin: 16px auto 40px; padding: 0 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }}
-
-  /* CARD */
+  .grid {{ max-width: 1100px; margin: 16px auto 0; padding: 0 32px 60px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }}
   .card {{ background: white; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; display: flex; flex-direction: column; }}
   .card:hover {{ box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }}
   .card-top {{ height: 4px; }}
@@ -128,99 +183,233 @@ html = f"""<!DOCTYPE html>
   .card-summary {{ font-size: 13px; color: #4B5563; line-height: 1.6; flex: 1; }}
   .card-link {{ font-size: 12px; color: #2E5EA8; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }}
   .card-link:hover {{ text-decoration: underline; }}
-
-  /* EMPTY STATE */
-  .empty {{ max-width: 1100px; margin: 60px auto; padding: 0 32px; text-align: center; color: #9CA3AF; }}
-
+ 
   /* FOOTER */
-  .footer {{ background: #0B1929; color: #4B5E7A; text-align: center; padding: 20px; font-size: 12px; margin-top: auto; }}
-  .footer a {{ color: #C9A050; text-decoration: none; }}
-
-  @media (max-width: 600px) {{
-    .header-inner, .stats-inner, .controls, .grid, .results-info {{ padding-left: 16px; padding-right: 16px; }}
+  footer {{ background: #0B1929; padding: 48px 32px; }}
+  .footer-inner {{ max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; }}
+  .footer-left .footer-name {{ color: white; font-weight: 600; font-size: 15px; margin-bottom: 6px; }}
+  .footer-left .footer-desc {{ color: #4B5E7A; font-size: 13px; line-height: 1.5; max-width: 360px; }}
+  .footer-links {{ display: flex; gap: 16px; }}
+  .footer-link {{ display: flex; align-items: center; gap: 6px; color: #8A9BB5; font-size: 13px; text-decoration: none; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; transition: all 0.2s; }}
+  .footer-link:hover {{ color: white; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }}
+  .footer-bottom {{ max-width: 1100px; margin: 24px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.06); color: #2E3D52; font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }}
+ 
+  @media (max-width: 768px) {{
+    .why-grid {{ grid-template-columns: 1fr; gap: 32px; }}
+    .steps {{ grid-template-columns: 1fr; }}
+    .steps::before {{ display: none; }}
+    .nav-links {{ display: none; }}
+    .footer-inner {{ flex-direction: column; }}
     .grid {{ grid-template-columns: 1fr; }}
-    .stat-divider {{ display: none; }}
+    section {{ padding: 60px 16px; }}
+    .controls, .results-info, .stats-inner {{ padding-left: 16px; padding-right: 16px; }}
+    .grid {{ padding-left: 16px; padding-right: 16px; }}
   }}
 </style>
 </head>
 <body>
-
-<header class="header">
-  <div class="header-inner">
-    <div class="header-left">
-      <div>
-        <div class="header-sub">Regulatory Intelligence</div>
-        <div class="header-title">EMA + FDA Bulletin</div>
+ 
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-name">Sahil <span>Subramaniam</span></div>
+    <div class="nav-links">
+      <a href="#why">About</a>
+      <a href="#how">How it works</a>
+      <a href="#bulletin">Live Bulletin</a>
+      <a href="https://www.linkedin.com/in/sahil-subramaniam-1007272b3" target="_blank">LinkedIn</a>
+    </div>
+  </div>
+</nav>
+ 
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-inner">
+    <div class="hero-eyebrow"><div class="hero-dot"></div> Live Regulatory Intelligence Tool</div>
+    <h1>RA professionals deserve <span>better tools.</span></h1>
+    <p class="hero-sub">AI is reshaping every industry. Regulatory Affairs should be no different. This tool automatically monitors EMA and FDA for updates — so you can focus on the work that actually matters.</p>
+    <div class="hero-actions">
+      <a href="#bulletin" class="btn-primary">View Live Bulletin</a>
+      <a href="#why" class="btn-ghost">Why I built this</a>
+    </div>
+    <div class="hero-tags">
+      <span class="hero-tag">EMA Monitoring</span>
+      <span class="hero-tag">FDA Press Releases</span>
+      <span class="hero-tag">AI Summarization</span>
+      <span class="hero-tag">Auto-updates Daily</span>
+      <span class="hero-tag">MSc RA — TUS Ireland</span>
+    </div>
+  </div>
+</section>
+ 
+<!-- WHY -->
+<section class="why" id="why">
+  <div class="section-inner">
+    <div class="section-label">The Problem + The Person</div>
+    <div class="section-title">Where this came from</div>
+    <div class="why-grid">
+      <div class="why-story">
+        <p>During my time as a Regulatory Affairs intern at <strong>Dabur International Ltd.</strong> in Dubai, one of my tasks was to manually visit health authority websites across multiple markets — checking for updates to herbal and health product regulations, one country at a time.</p>
+        <p>It was tedious, time-consuming, and entirely manual. Every update had to be found, read, interpreted, and logged by hand. For a function as critical as regulatory affairs, it felt like an unnecessary drain on time that could be spent on actual strategy.</p>
+        <p>That experience planted the seed. <strong>AI is ubiquitous now</strong> — it's reshaping finance, medicine, law. Regulatory Affairs, with its volume of documentation, multi-market complexity, and constant change, is exactly where it can make a real difference. Not to replace RA professionals, but to handle the tedious so they can focus on the holistic.</p>
+        <p>This tool is a small proof of that idea — built as I prepare to begin my <strong>MSc in Process Validation and Regulatory Affairs</strong> at TUS Moylish Campus, Ireland, and eager to connect with the regulatory community there.</p>
       </div>
-      <div class="live-badge"><div class="live-dot"></div> Live</div>
-    </div>
-    <div class="header-right">Updated: {generated}</div>
-  </div>
-</header>
-
-<div class="stats-bar">
-  <div class="stats-inner">
-    <div class="stat">
-      <div class="stat-num" style="color:#1A1D27">{len(all_entries)}</div>
-      <div class="stat-label">Total Updates</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <div class="stat-num" style="color:#2E5EA8">{ema_news_count}</div>
-      <div class="stat-label">EMA News</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <div class="stat-num" style="color:#8B6914">{ema_guide_count}</div>
-      <div class="stat-label">EMA Guidelines</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <div class="stat-num" style="color:#8B1A1A">{fda_count}</div>
-      <div class="stat-label">FDA Releases</div>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat">
-      <div class="stat-num" style="color:#6B7280">30</div>
-      <div class="stat-label">Day Window</div>
+      <div class="about-pills">
+        <div class="why-quote">
+          <p>"RA professionals shouldn't be spending their day manually refreshing health authority websites. That's exactly the kind of task AI should be handling."</p>
+          <cite>— The thinking behind this project</cite>
+        </div>
+        <div class="pill">
+          <div class="pill-label">Background</div>
+          <div class="pill-value">RA Intern — Dabur International Ltd., Dubai<br>RA Intern — Vieco Pharmaceuticals, Dubai</div>
+        </div>
+        <div class="pill">
+          <div class="pill-label">Currently</div>
+          <div class="pill-value">Prospective MSc student — Process Validation & Regulatory Affairs, TUS Moylish Campus, Ireland</div>
+        </div>
+        <div class="pill">
+          <div class="pill-label">Markets exposed to</div>
+          <div class="pill-value">GCC, CIS, EU (observational), USA (observational), LATAM (partial)</div>
+        </div>
+      </div>
     </div>
   </div>
+</section>
+ 
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-inner">
+    <div class="section-label">Under the Hood</div>
+    <div class="section-title">How it works</div>
+    <p class="section-sub">Three steps, fully automated, running every morning without any manual input.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Fetch</h3>
+        <p>Every day at 7am UTC, the tool pulls live updates directly from official regulatory RSS feeds — no scraping, no third parties.</p>
+        <div class="step-detail">
+          <span class="step-tag">EMA News</span>
+          <span class="step-tag">EMA Guidelines</span>
+          <span class="step-tag">FDA Press Releases</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Summarize</h3>
+        <p>Each update is passed to an AI model which generates a plain-language summary — what changed and why it matters for RA teams.</p>
+        <div class="step-detail">
+          <span class="step-tag">Groq API</span>
+          <span class="step-tag">Llama 3.1</span>
+          <span class="step-tag">30-day filter</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Publish</h3>
+        <p>The bulletin is automatically rebuilt and published as a live webpage — searchable, filterable, and always current.</p>
+        <div class="step-detail">
+          <span class="step-tag">GitHub Actions</span>
+          <span class="step-tag">GitHub Pages</span>
+          <span class="step-tag">Zero cost</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- BULLETIN -->
+<div id="bulletin">
+  <div class="bulletin-header">
+    <div class="bulletin-header-inner">
+      <div class="bulletin-title-group">
+        <div class="bulletin-title">Live Regulatory Bulletin</div>
+        <div class="live-badge"><div class="live-dot"></div> Live</div>
+      </div>
+      <div class="bulletin-updated">Last updated: {generated}</div>
+    </div>
+  </div>
+ 
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat">
+        <div class="stat-num" style="color:#1A1D27">{len(all_entries)}</div>
+        <div class="stat-label">Total Updates</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" style="color:#2E5EA8">{ema_news_count}</div>
+        <div class="stat-label">EMA News</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" style="color:#8B6914">{ema_guide_count}</div>
+        <div class="stat-label">EMA Guidelines</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" style="color:#8B1A1A">{fda_count}</div>
+        <div class="stat-label">FDA Releases</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" style="color:#6B7280">30</div>
+        <div class="stat-label">Day Window</div>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="controls">
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" type="text" placeholder="Search updates..." id="searchInput" oninput="filterCards()">
+    </div>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('EMA News & Press', this)" style="border-left: 3px solid #2E5EA8">EMA News</button>
+    <button class="filter-btn" onclick="setFilter('EMA Guidelines', this)" style="border-left: 3px solid #8B6914">Guidelines</button>
+    <button class="filter-btn" onclick="setFilter('FDA Press Releases', this)" style="border-left: 3px solid #8B1A1A">FDA</button>
+  </div>
+ 
+  <div class="results-info" id="resultsInfo">{len(all_entries)} updates in the last 30 days</div>
+  <div class="grid" id="grid"></div>
 </div>
-
-<div class="controls">
-  <div class="search-wrap">
-    <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input class="search-input" type="text" placeholder="Search updates..." id="searchInput" oninput="filterCards()">
+ 
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="footer-name">Sahil Subramaniam</div>
+      <div class="footer-desc">Regulatory Affairs professional-in-training. Building AI tools to make RA smarter, faster, and less tedious — one feed at a time.</div>
+    </div>
+    <div class="footer-links">
+      <a href="https://www.linkedin.com/in/sahil-subramaniam-1007272b3" target="_blank" class="footer-link">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        LinkedIn
+      </a>
+      <a href="https://github.com/sahils0305/EMA-FDA---Regulatory-Bulletin" target="_blank" class="footer-link">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
   </div>
-  <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
-  <button class="filter-btn" onclick="setFilter('EMA News & Press', this)" style="border-left: 3px solid #2E5EA8">EMA News</button>
-  <button class="filter-btn" onclick="setFilter('EMA Guidelines', this)" style="border-left: 3px solid #8B6914">Guidelines</button>
-  <button class="filter-btn" onclick="setFilter('FDA Press Releases', this)" style="border-left: 3px solid #8B1A1A">FDA</button>
-</div>
-
-<div class="results-info" id="resultsInfo">{len(all_entries)} updates in the last 30 days</div>
-
-<div class="grid" id="grid"></div>
-
-<footer class="footer">
-  Built with live EMA + FDA RSS feeds + Groq AI &nbsp;·&nbsp; Auto-updates daily via GitHub Actions &nbsp;·&nbsp;
-  <a href="https://github.com/sahils0305/EMA-FDA---Regulatory-Bulletin" target="_blank">View on GitHub</a>
-  &nbsp;·&nbsp; Always verify against official sources before regulatory use.
+  <div class="footer-bottom">
+    <span>Always verify against official EMA and FDA sources before regulatory use.</span>
+    <span>Auto-updates daily via GitHub Actions · Built with Groq AI + Python</span>
+  </div>
 </footer>
-
+ 
 <script>
 const entries = {entries_json};
 let currentFilter = 'all';
-
+ 
 function renderCards(data) {{
   const grid = document.getElementById('grid');
   document.getElementById('resultsInfo').textContent = data.length + ' update' + (data.length !== 1 ? 's' : '') + ' shown';
   if (data.length === 0) {{
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><p style="font-size:18px;margin-bottom:8px">No updates found</p><p>Try adjusting your search or filter.</p></div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF"><p style="font-size:18px;margin-bottom:8px">No updates found</p><p>Try adjusting your search or filter.</p></div>';
     return;
   }}
   grid.innerHTML = data.map(e => `
-    <div class="card" data-label="${{e.label}}">
+    <div class="card">
       <div class="card-top" style="background:${{e.color}}"></div>
       <div class="card-body">
         <div class="card-meta">
@@ -234,7 +423,7 @@ function renderCards(data) {{
     </div>
   `).join('');
 }}
-
+ 
 function filterCards() {{
   const q = document.getElementById('searchInput').value.toLowerCase();
   const filtered = entries.filter(e => {{
@@ -244,20 +433,21 @@ function filterCards() {{
   }});
   renderCards(filtered);
 }}
-
+ 
 function setFilter(filter, btn) {{
   currentFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   filterCards();
 }}
-
+ 
 renderCards(entries);
 </script>
 </body>
 </html>"""
-
+ 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
-
-print("✓ Dashboard saved successfully!")
+ 
+print("✓ Full website saved successfully!")
+ 
