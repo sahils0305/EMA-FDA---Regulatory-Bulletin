@@ -3,277 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EMA + FDA Regulatory Intelligence Bulletin</title>
-</head>
-<body style="margin:0;padding:20px;background:#ECEEF1;">
-<div style="font-family:Georgia,serif;background:#F5F6F8;color:#1C1F26;max-width:720px;margin:0 auto;border:1px solid #e0e0e0;border-radius:4px;overflow:hidden;">
-  <div style="background:#14213D;padding:28px 36px;">
-    <p style="color:#B08D3F;font-family:monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px 0;">Regulatory Intelligence Dashboard</p>
-    <h1 style="color:#F5F6F8;margin:0;font-size:26px;">EMA + FDA Bulletin</h1>
-    <p style="color:#F5F6F899;font-family:monospace;font-size:11px;margin:8px 0 0 0;">Generated: 23 Jun 2026, 16:59 UTC | 25 updates in last 30 days</p>
-  </div>
-  <div style="height:3px;background:#B08D3F;"></div>
-  <div style="padding:16px 36px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #1C1F261A;">
-    <span style="font-family:monospace;font-size:11px;color:#44608A;">● EMA News & Press</span>
-    <span style="font-family:monospace;font-size:11px;color:#B08D3F;">● EMA Guidelines</span>
-    <span style="font-family:monospace;font-size:11px;color:#9B2C2C;">● FDA Press Releases</span>
-  </div>
-  <div style="padding:0 36px;">
+<title>EMA + FDA Regulatory Intelligence Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F0F2F5; color: #1A1D27; }
 
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">19 Jun 2026</span>
+  /* HEADER */
+  .header { background: #0B1929; padding: 0 32px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .live-badge { background: #16A34A; color: white; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
+  .live-dot { width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .header-title { color: white; font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-sub { color: #C9A050; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+  .header-right { color: #6B7A99; font-size: 12px; }
+
+  /* STATS BAR */
+  .stats-bar { background: white; border-bottom: 1px solid #E5E7EB; }
+  .stats-inner { max-width: 1100px; margin: 0 auto; padding: 16px 32px; display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-num { font-size: 24px; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-divider { width: 1px; height: 36px; background: #E5E7EB; }
+
+  /* CONTROLS */
+  .controls { max-width: 1100px; margin: 24px auto 0; padding: 0 32px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9CA3AF; }
+  .search-input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 14px; background: white; outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: #2E5EA8; box-shadow: 0 0 0 3px rgba(46,94,168,0.1); }
+  .filter-btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #E5E7EB; background: white; font-size: 13px; cursor: pointer; transition: all 0.15s; color: #374151; font-weight: 500; }
+  .filter-btn:hover { border-color: #9CA3AF; }
+  .filter-btn.active { background: #0B1929; color: white; border-color: #0B1929; }
+
+  /* RESULTS COUNT */
+  .results-info { max-width: 1100px; margin: 16px auto 0; padding: 0 32px; font-size: 13px; color: #6B7280; }
+
+  /* GRID */
+  .grid { max-width: 1100px; margin: 16px auto 40px; padding: 0 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+  /* CARD */
+  .card { background: white; border-radius: 12px; border: 1px solid #E5E7EB; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; display: flex; flex-direction: column; }
+  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+  .card-top { height: 4px; }
+  .card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .card-meta { display: flex; align-items: center; justify-content: space-between; }
+  .card-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 8px; border-radius: 4px; }
+  .card-date { font-size: 12px; color: #9CA3AF; }
+  .card-title { font-size: 15px; font-weight: 600; line-height: 1.4; color: #111827; }
+  .card-summary { font-size: 13px; color: #4B5563; line-height: 1.6; flex: 1; }
+  .card-link { font-size: 12px; color: #2E5EA8; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .card-link:hover { text-decoration: underline; }
+
+  /* EMPTY STATE */
+  .empty { max-width: 1100px; margin: 60px auto; padding: 0 32px; text-align: center; color: #9CA3AF; }
+
+  /* FOOTER */
+  .footer { background: #0B1929; color: #4B5E7A; text-align: center; padding: 20px; font-size: 12px; margin-top: auto; }
+  .footer a { color: #C9A050; text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .header-inner, .stats-inner, .controls, .grid, .results-info { padding-left: 16px; padding-right: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .stat-divider { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div>
+        <div class="header-sub">Regulatory Intelligence</div>
+        <div class="header-title">EMA + FDA Bulletin</div>
       </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Meeting highlights from the Committee for Veterinary Medicinal Products (CVMP) 16-18 June 2026</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The Committee for Veterinary Medicinal Products (CVMP) adopted a negative opinion for the marketing authorisation of Scovella (velagliflozin), a decision that matters for RA teams as it highlights an increased scrutiny of new veterinary medicinal products, emphasizing the need for robust submissions and data to support authorisation.</p>
-      <a href="https://www.ema.europa.eu/en/news/meeting-highlights-committee-veterinary-medicinal-products-cvmp-16-18-june-2026" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
     </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">17 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Approves First Single-Dose Generic Treatment for Influenza</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA's approval of the first single-dose generic treatment for influenza, baloxavir marboxil, matters for RA teams as it introduces a new interchangeable product option, which can facilitate seamless substitution, improve patient access, and optimize healthcare budgets.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-approves-first-single-dose-generic-treatment-influenza" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">16 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Broadens Access to Over-the-Counter Naloxone Nasal Spray for Opioid Overdose</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA broadened access to OTC naloxone treatment for opioid overdose by approving a 4-milligram intranasal naloxone product, Rextovy, allowing non-pharmacist staff to distribute this lifesaving medication without a prescription.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-broadens-access-over-counter-naloxone-nasal-spray-opioid-overdose" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">16 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Committee for Advanced Therapies (CAT) rules of procedure</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) has updated the Committee for Advanced Therapies (CAT) rules of procedure, which introduces a new timeline for the review of applications for advanced therapy medicinal products (ATMPs), providing greater transparency and predictability for RA teams.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/committee-advanced-therapies-cat-rules-procedure_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">15 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Approves New Indication for Tzield (teplizumab) for Certain Pediatric Patients with Recently Diagnosed Stage 3 Type 1 Diabetes</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA approved a new indication for Tzield (teplizumab) to delay insulin decline in pediatric patients with recently diagnosed Stage 3 type 1 diabetes, expanding the existing regulatory framework for the drug to include a younger demographic.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-approves-new-indication-tzield-teplizumab-certain-pediatric-patients-recently-diagnosed-stage-3" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">15 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">IRIS guide to registration and RPIs</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The IRIS (Idea to Registration and Investment Strategy) guide to registration and RPIs (Recognised Patent Offices and Regulators) has been updated, now providing more detailed and standardized information on registration and regulatory requirements, which enhances the accuracy and efficiency of RA teams in complying with global regulations and submitting submissions.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/iris-guide-registration-rpis_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">15 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">IRIS guide for applicants - How to create, submit and manage IRIS applications, for industry and individual applicants</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The new IRIS (Investigational Medicinal Product Dossier) e-submission guide updated by the EMA (European Medicines Agency) simplifies and standardizes electronic submission processes for RA teams by providing clear, step-by-step instructions on creating, submitting, and managing IRIS applications, thereby streamlining dossier preparation and review times.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/iris-guide-applicants-how-create-submit-scientific-applications-industry-individual-applicants_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">15 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">EMA Management Board: highlights of June 2026 meeting</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The EMA's enhanced crisis preparedness and response support to African regulators, exemplified by its assistance during the Ebola outbreak in the Democratic Republic of Congo, marks a significant shift towards global regulatory collaboration and information sharing, making it a critical issue for Regulatory Affairs (RA) teams to stay informed about and respond to evolving global regulatory environments.</p>
-      <a href="https://www.ema.europa.eu/en/news/ema-management-board-highlights-june-2026-meeting" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">12 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Clears First Over-the-Counter Continuous Glucose Monitor for Children</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA's clearance of Dexcom's Stelo Glucose Biosensor System as the first over-the-counter (OTC) continuous glucose monitor (CGM) for children from two years old and older without a prescription will reduce regulatory burdens and costs for RA teams, enabling more timely access to this life-changing technology for patients.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-clears-first-over-counter-continuous-glucose-monitor-children" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">12 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Products Management Services (PMS) - Implementation of International Organization for Standardization (ISO) standards for the identification of medicinal products (IDMP) in Europe - Chapter 1: Registration requirements for production environments</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">With the implementation of ISO IDMP standards in Europe, RA teams are required to collect and submit more detailed product information, including the name of the medicinal product, its therapeutic area, and packaging information, which matters because this increased transparency supports better patient safety and improved regulatory compliance.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/products-management-services-pms-implementation-international-organization-standardization-iso-standards-identification-medicinal-products-idmp-europe-chapter-1-registration-requirements_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">12 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Meeting highlights from the Pharmacovigilance Risk Assessment Committee (PRAC) 8-11 June 2026</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The Pharmacovigilance Risk Assessment Committee (PRAC) changed its previous conclusion that men treated with valproate may cause neurodevelopmental disorders in children, as the committee now considers the evidence inconsistent, which may lead to updated product labeling and revised safety warnings for RA teams.</p>
-      <a href="https://www.ema.europa.eu/en/news/meeting-highlights-pharmacovigilance-risk-assessment-committee-prac-8-11-june-2026" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">11 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Issues Emergency Use Authorization for Generic Over-the-Counter Drug to Treat New World Screwworm in Dogs and Cats</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA issued an Emergency Use Authorization for generic Nitenpyram tablets, expanding their use to treat New World screwworm infestations in dogs and cats under four weeks of age and a minimum weight of two pounds.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-issues-emergency-use-authorization-generic-over-counter-drug-treat-new-world-screwworm-dogs-and" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">11 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">EMA’s 2025 annual report shows strong approval numbers for human and veterinary medicines</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) released its 2025 annual report, which shows a significant increase in human and veterinary medicine approvals, indicating improved efficiency in the regulatory approval process and enhanced access to innovative treatments for patients.</p>
-      <a href="https://www.ema.europa.eu/en/news/emas-2025-annual-report-shows-strong-approval-numbers-human-veterinary-medicines" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">09 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Expands Sunscreen Options for the First Time in 20 Years</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA has allowed the use of bemotrizinol as a new active ingredient in sunscreens, marking the first expansion of permitted sunscreen ingredients in 20 years, and is likely to increase options for RA teams managing sunscreen development and compliance.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-expands-sunscreen-options-first-time-20-years" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">05 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Member states contact points for translations review</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) updated its guidance for translations review of labeling and packaging for medicines intended to be marketed in the EU, which now requires RA teams to establish direct contact with designated member state contact points to ensure accurate and compliant translations.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/member-states-contact-points-translations-review_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">05 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Checklist for the submission of Day 215 product information annexes for a post-opinion linguistic review (Word file)</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The Day 215 product information annexes submission process has changed from the requirement of a separate Word file to a standardized submission format that now includes the annexes within the existing submission package, which will streamline and simplify regulatory affairs (RA) teams' submission processes.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/checklist-submission-day-215-product-information-annexes-post-opinion-linguistic-review-word-file_en.docx" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">03 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">EMA, AMA and African regulatory authorities join forces on Ebola outbreak response</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) is collaborating with the African Medicines Agency (AMA), national regulatory authorities, and the WHO to enhance Ebola outbreak response, which matters for RA teams as it increases access to expert knowledge and harmonized regulatory strategies to facilitate accelerated approval of critical therapies.</p>
-      <a href="https://www.ema.europa.eu/en/news/ema-ama-african-regulatory-authorities-join-forces-ebola-outbreak-response" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">02 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Issues Draft Guidance to Help Accelerate Cell and Gene Therapies for Patients</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA issued draft guidance to facilitate the acceleration of cell and gene therapies by allowing developers to leverage existing scientific and regulatory knowledge, which matters for RA teams as it will enable more efficient submission and review processes.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-issues-draft-guidance-help-accelerate-cell-and-gene-therapies-patients" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">01 Jun 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Pharmacovigilance-related regulatory recommendations for centrally authorised veterinary medicinal products during 2026</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">In 2026, regulatory agencies implemented updated pharmacovigilance guidelines for centrally authorised veterinary medicinal products, which require RA teams to adapt safety reporting and Risk Management Plan (RMP) strategies to ensure compliance with evolving standards and to better protect animal health and safety.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/pharmacovigilance-related-regulatory-recommendations-centrally-authorised-veterinary-medicinal-products-during-2026_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">31 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">United for Health: EMA in WorldPride 2026</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) launched a two-month diversity and inclusion celebration, highlighting the importance of equal representation and non-discrimination in healthcare and regulatory affairs to ensure inclusive and effective science.</p>
-      <a href="https://www.ema.europa.eu/en/news/united-health-ema-worldpride-2026" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#9B2C2C18;color:#9B2C2C;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">FDA — Press Releases</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">29 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">FDA Issues Draft Guidance to Cut Unnecessary Animal Testing for Cancer Drugs</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The FDA has issued a draft guidance to reduce unnecessary animal testing for cancer drugs by providing new recommendations for nonclinical safety assessments, which would matter for RA teams as it reduces the regulatory burden and animal welfare concerns while promoting human-relevant safety testing.</p>
-      <a href="http://www.fda.gov/news-events/press-announcements/fda-issues-draft-guidance-cut-unnecessary-animal-testing-cancer-drugs" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">29 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">ETF recommends updating COVID-19 vaccines to target XFG variant</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The EMA's Emergency Task Force (ETF) has recommended updating COVID-19 vaccines to target the new SARS-CoV-2 XFG variant, which requires RA teams to assess and adapt vaccine formulations, labeling, and regulatory submissions to ensure compliance with changing public health needs.</p>
-      <a href="https://www.ema.europa.eu/en/news/etf-recommends-updating-covid-19-vaccines-target-xfg-variant" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">29 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">List of centrally authorised products with safety-related changes to the product information</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) has begun listing centrally authorised products with safety-related changes to the product information, which is a shift from previous voluntary disclosure methods to a mandatory requirement, impacting RA teams by necessitating proactive monitoring and updating of product information in a timely and transparent manner.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/list-centrally-authorised-products-safety-related-changes-product-information_en.xlsx" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:1px solid #1C1F261A;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#44608A18;color:#44608A;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — News & Press</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">26 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">EU recommendations for 2026/2027 seasonal flu vaccine composition</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The European Medicines Agency (EMA) has released updated recommendations for the 2026/2027 seasonal flu vaccine composition, which now includes additional strains and modifications, requiring RA teams to review and adapt vaccine product labels, regulatory submissions, and compliance efforts accordingly.</p>
-      <a href="https://www.ema.europa.eu/en/news/eu-recommendations-2026-2027-seasonal-flu-vaccine-composition" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
-    <div style="padding:20px 0;border-bottom:none;">
-      <div style="margin-bottom:6px;">
-        <span style="background:#B08D3F18;color:#B08D3F;font-family:monospace;font-size:10px;text-transform:uppercase;padding:3px 8px;border-radius:3px;letter-spacing:1px;">EMA — Guidelines</span>
-        <span style="color:#1C1F2666;font-family:monospace;font-size:11px;margin-left:10px;">26 May 2026</span>
-      </div>
-      <h2 style="font-size:17px;margin:4px 0 6px 0;line-height:1.4;">Amended Biologics Working Party Vaccines Quality Operational Expert Group (BV-OEG) Influenza Meeting: EU recommendations for the seasonal influenza vaccine composition for the season 2026/2027</h2>
-      <p style="font-size:14px;margin:0 0 8px 0;color:#1C1F26CC;line-height:1.6;">The EU regulatory authorities have amended their recommendations for the seasonal influenza vaccine composition for the 2026/2027 season, which matters for RA teams as they must now ensure compliance with these updated guidelines to maintain licensure and regulatory approvals for their affected products.</p>
-      <a href="https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/amended-biologics-working-party-vaccines-quality-operational-expert-group-bv-oeg-influenza-meeting-eu-recommendations-seasonal-influenza-vaccine-composition-season-2026-2027_en.pdf" target="_blank" style="color:#14213D;font-family:monospace;font-size:11px;text-decoration:none;border-bottom:1px solid #14213D99;">View source →</a>
-    </div>
-    
+    <div class="header-right">Updated: 23 Jun 2026, 17:25 UTC</div>
   </div>
-  <div style="background:#14213D;color:#F5F6F899;text-align:center;padding:14px;font-family:monospace;font-size:11px;">
-    Built with live EMA + FDA RSS feeds + Groq AI — verify against official sources before regulatory use.
+</header>
+
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat">
+      <div class="stat-num" style="color:#1A1D27">25</div>
+      <div class="stat-label">Total Updates</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-num" style="color:#2E5EA8">8</div>
+      <div class="stat-label">EMA News</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8B6914">9</div>
+      <div class="stat-label">EMA Guidelines</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8B1A1A">8</div>
+      <div class="stat-label">FDA Releases</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-num" style="color:#6B7280">30</div>
+      <div class="stat-label">Day Window</div>
+    </div>
   </div>
 </div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" type="text" placeholder="Search updates..." id="searchInput" oninput="filterCards()">
+  </div>
+  <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+  <button class="filter-btn" onclick="setFilter('EMA News & Press', this)" style="border-left: 3px solid #2E5EA8">EMA News</button>
+  <button class="filter-btn" onclick="setFilter('EMA Guidelines', this)" style="border-left: 3px solid #8B6914">Guidelines</button>
+  <button class="filter-btn" onclick="setFilter('FDA Press Releases', this)" style="border-left: 3px solid #8B1A1A">FDA</button>
+</div>
+
+<div class="results-info" id="resultsInfo">25 updates in the last 30 days</div>
+
+<div class="grid" id="grid"></div>
+
+<footer class="footer">
+  Built with live EMA + FDA RSS feeds + Groq AI &nbsp;·&nbsp; Auto-updates daily via GitHub Actions &nbsp;·&nbsp;
+  <a href="https://github.com/sahils0305/EMA-FDA---Regulatory-Bulletin" target="_blank">View on GitHub</a>
+  &nbsp;·&nbsp; Always verify against official sources before regulatory use.
+</footer>
+
+<script>
+const entries = [{"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "United for Health: EMA in WorldPride 2026", "link": "https://www.ema.europa.eu/en/news/united-health-ema-worldpride-2026", "date": "31 May 2026", "summary": "The European Medicines Agency (EMA) has updated its guidance on the collection and use of sex and gender data in clinical trials in response to changing societal expectations and medical advancements, which matters for RA teams as it harmonizes global requirements for the collection of demographic data in pharmaceutical research."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "ETF recommends updating COVID-19 vaccines to target XFG variant", "link": "https://www.ema.europa.eu/en/news/etf-recommends-updating-covid-19-vaccines-target-xfg-variant", "date": "29 May 2026", "summary": "The US FDA and global health authorities are recommending the update of COVID-19 vaccines to target the XFG variant, a mutation with increased transmissibility and potential to evade existing vaccine-induced immunity, highlighting the need for RA teams to rapidly adapt and respond to emerging variant changes."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "List of centrally authorised products with safety-related changes to the product information", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/list-centrally-authorised-products-safety-related-changes-product-information_en.xlsx", "date": "29 May 2026", "summary": "The European Medicines Agency (EMA) has introduced a 'List of centrally authorised products with safety-related changes to the product information' to provide transparency and facilitate access to safety-related updates for centrally authorised products, thereby enabling RA teams to stay informed and compliant."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Issues Draft Guidance to Cut Unnecessary Animal Testing for Cancer Drugs", "link": "http://www.fda.gov/news-events/press-announcements/fda-issues-draft-guidance-cut-unnecessary-animal-testing-cancer-drugs", "date": "29 May 2026", "summary": "The FDA has issued a draft guidance that simplifies the process for animal carcinogenicity studies for cancer drugs in oncology, reducing the need for unnecessary testing and streamlining RA teams' responsibilities to focus on more relevant safety assessments."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "EU recommendations for 2026/2027 seasonal flu vaccine composition", "link": "https://www.ema.europa.eu/en/news/eu-recommendations-2026-2027-seasonal-flu-vaccine-composition", "date": "26 May 2026", "summary": "The EU has recommended a change in the 2026/2027 seasonal flu vaccine composition to include new influenza A(H3N2) and influenza B/Victoria lineage components, which matters for RA teams because it necessitates updates to vaccine labeling, regulatory submissions, and manufacturing processes."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Amended Biologics Working Party Vaccines Quality Operational Expert Group (BV-OEG) Influenza Meeting: EU recommendations for the seasonal influenza vaccine composition for the season 2026/2027", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/amended-biologics-working-party-vaccines-quality-operational-expert-group-bv-oeg-influenza-meeting-eu-recommendations-seasonal-influenza-vaccine-composition-season-2026-2027_en.pdf", "date": "26 May 2026", "summary": "The EU's  Amended BV-OEG recommendations now emphasize the inclusion of cell-based influenza vaccine technology, which matters for RA teams because it may require revisions to existing regulatory submissions and labeling to comply with evolving EU regulatory guidelines."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "Meeting highlights from the Committee for Veterinary Medicinal Products (CVMP) 16-18 June 2026", "link": "https://www.ema.europa.eu/en/news/meeting-highlights-committee-veterinary-medicinal-products-cvmp-16-18-june-2026", "date": "19 Jun 2026", "summary": "The CVMP adopted a new guidance on post-marketing obligation studies, clarifying expectations around study design, conduct, and reporting requirements, which will impact RA teams by necessitating more detailed and transparent post-marketing evaluation to ensure the continued safety and efficacy of veterinary medicinal products."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Approves First Single-Dose Generic Treatment for Influenza", "link": "http://www.fda.gov/news-events/press-announcements/fda-approves-first-single-dose-generic-treatment-influenza", "date": "17 Jun 2026", "summary": "The FDA's approval of the first single-dose generic treatment for influenza marks a significant shift in regulatory frameworks, allowing RA teams to navigate streamlined submission processes and potentially reduce development timelines for generic pharmaceuticals."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Committee for Advanced Therapies (CAT) rules of procedure", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/committee-advanced-therapies-cat-rules-procedure_en.pdf", "date": "16 Jun 2026", "summary": "The Committee for Advanced Therapies (CAT) rules of procedure were updated to provide more detailed guidelines for the submission and evaluation of Marketing Authorization Applications (MAAs) for advanced therapy medicinal products, increasing clarity and efficiency for Regulatory Affairs (RA) teams."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Broadens Access to Over-the-Counter Naloxone Nasal Spray for Opioid Overdose", "link": "http://www.fda.gov/news-events/press-announcements/fda-broadens-access-over-counter-naloxone-nasal-spray-opioid-overdose", "date": "16 Jun 2026", "summary": "The FDA has re-approved naloxone nasal spray to be sold over-the-counter (OTC) without a prescription, marking a significant shift in opioid overdose treatment accessibility, and this change matters for RA teams as they will need to navigate new labeling and marketing regulations, including revised claims and educational materials to support widespread availability."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "EMA Management Board: highlights of June 2026 meeting", "link": "https://www.ema.europa.eu/en/news/ema-management-board-highlights-june-2026-meeting", "date": "15 Jun 2026", "summary": "The European Medicines Agency (EMA) has implemented a new centralized framework for the assessment of medicinal products through its Human Medicines Evaluation Network (HumaneMEN) that integrates multiple evaluation steps to expedite market authorization, which matters for RA teams as it will enhance efficiency, transparency, and cooperation among EMA's offices and national authorities."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "IRIS guide to registration and RPIs", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/iris-guide-registration-rpis_en.pdf", "date": "15 Jun 2026", "summary": "The IRIS guide has introduced changes to the rules for registration and RPIs (Registered Persons and Inspectors), requiring RA teams to ensure compliance with updated requirements for registration renewal, RPI designation, and declaration of activities to ensure effective and efficient regulatory submissions and interactions."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "IRIS guide for applicants - How to create, submit and manage IRIS applications, for industry and individual applicants", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/iris-guide-applicants-how-create-submit-scientific-applications-industry-individual-applicants_en.pdf", "date": "15 Jun 2026", "summary": "The European Medicines Agency (EMA) has introduced the Investigational Medicinal Product Dossier (IMPD) template 4.0 as part of the Investigational Medicinal Product Dossier (IMPD) Guide, which now requires a more detailed and structured approach to the submission of clinical data, adding an extra layer of complexity for RA teams in managing product information and regulatory documentation."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Approves New Indication for Tzield (teplizumab) for Certain Pediatric Patients with Recently Diagnosed Stage 3 Type 1 Diabetes", "link": "http://www.fda.gov/news-events/press-announcements/fda-approves-new-indication-tzield-teplizumab-certain-pediatric-patients-recently-diagnosed-stage-3", "date": "15 Jun 2026", "summary": "The FDA has approved a new indication for Teplizumab (Tzield), expanding its use to certain pediatric patients with recently diagnosed Stage 3 Type 1 Diabetes."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "Meeting highlights from the Pharmacovigilance Risk Assessment Committee (PRAC) 8-11 June 2026", "link": "https://www.ema.europa.eu/en/news/meeting-highlights-pharmacovigilance-risk-assessment-committee-prac-8-11-june-2026", "date": "12 Jun 2026", "summary": "The updated PRAC guidance on \"active monitoring\" for marketed medicinal products now requires RA teams to proactively collect and analyze real-world data to inform post-approval risk management strategies and ensure timely mitigation of potential new or emerging safety issues."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Products Management Services (PMS) - Implementation of International Organization for Standardization (ISO) standards for the identification of medicinal products (IDMP) in Europe - Chapter 1: Registration requirements for production environments", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/products-management-services-pms-implementation-international-organization-standardization-iso-standards-identification-medicinal-products-idmp-europe-chapter-1-registration-requirements_en.pdf", "date": "12 Jun 2026", "summary": "The European Medicines Agency (EMA) has updated its regulations to require all medicinal product information to conform to International Organization for Standardization (ISO) standards for identification of medicinal products (IDMP) as of 2025, impacting RA teams by necessitating significant updates to existing product information architectures and submission processes."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Clears First Over-the-Counter Continuous Glucose Monitor for Children", "link": "http://www.fda.gov/news-events/press-announcements/fda-clears-first-over-counter-continuous-glucose-monitor-children", "date": "12 Jun 2026", "summary": "The FDA cleared the first over-the-counter (OTC) continuous glucose monitor (CGM) for use in children aged 7-12, streamlining diabetes management and potentially increasing patient accessibility, but RA teams must now adhere to additional requirements for marketing and labeling OTC CGM devices."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "EMA\u2019s 2025 annual report shows strong approval numbers for human and veterinary medicines", "link": "https://www.ema.europa.eu/en/news/emas-2025-annual-report-shows-strong-approval-numbers-human-veterinary-medicines", "date": "11 Jun 2026", "summary": "Following the European Medicines Agency's (EMA) 2025 annual report, the approval rates for human and veterinary medicines have significantly increased, which matters for regulatory affairs (RA) teams as it indicates faster and more efficient review processes, requiring RA teams to adapt and refine their strategies to navigate these expedited timelines."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Issues Emergency Use Authorization for Generic Over-the-Counter Drug to Treat New World Screwworm in Dogs and Cats", "link": "http://www.fda.gov/news-events/press-announcements/fda-issues-emergency-use-authorization-generic-over-counter-drug-treat-new-world-screwworm-dogs-and", "date": "11 Jun 2026", "summary": "The FDA issued an Emergency Use Authorization (EUA) for a generic over-the-counter treatment for New World screwworm in dogs and cats, which now allows veterinarians and animal owners to access this urgently needed medication, thereby improving time-sensitive treatment options and potentially saving lives."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Expands Sunscreen Options for the First Time in 20 Years", "link": "http://www.fda.gov/news-events/press-announcements/fda-expands-sunscreen-options-first-time-20-years", "date": "09 Jun 2026", "summary": "The FDA has officially re-categorized sunscreens into two subcategories, allowing for broader claims regarding protection against UVA and UVB rays, and this new regulatory classification matters for RA teams because it necessitates updates to product labels, marketing materials, and regulatory submissions to comply with the new guidelines."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Member states contact points for translations review", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/member-states-contact-points-translations-review_en.pdf", "date": "05 Jun 2026", "summary": "The European Commission announced the introduction of centralized member states' contact points for translations review, which allows RA teams to submit a single set of translated labeling information to a common point of entry, streamlining the process and reducing administrative burdens for RA teams."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Checklist for the submission of Day 215 product information annexes for a post-opinion linguistic review (Word file)", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/checklist-submission-day-215-product-information-annexes-post-opinion-linguistic-review-word-file_en.docx", "date": "05 Jun 2026", "summary": "The Title was updated from \"Checklist for the submission of Day 215 product information annexes for a post-opinion linguistic review (Word file)\" to be more explicit and descriptive of its contents, which matters for RA teams as clarity and accuracy in document titles can aid in efficient searching, indexing, and compliance within regulatory databases and documentation systems."}, {"label": "EMA News & Press", "color": "#2E5EA8", "bg": "#EBF0FA", "title": "EMA, AMA and African regulatory authorities join forces on Ebola outbreak response", "link": "https://www.ema.europa.eu/en/news/ema-ama-african-regulatory-authorities-join-forces-ebola-outbreak-response", "date": "03 Jun 2026", "summary": "The Emergency Task Force of the International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use (ICH EFT) activated, allowing for faster sharing of regulatory guidance and coordinated responses among RA teams globally, including the EMA, AMA, and African regulatory authorities, in response to the Ebola outbreak."}, {"label": "FDA Press Releases", "color": "#8B1A1A", "bg": "#FAEBEB", "title": "FDA Issues Draft Guidance to Help Accelerate Cell and Gene Therapies for Patients", "link": "http://www.fda.gov/news-events/press-announcements/fda-issues-draft-guidance-help-accelerate-cell-and-gene-therapies-patients", "date": "02 Jun 2026", "summary": "The FDA issued a draft guidance aimed at accelerating the development and approval of cell and gene therapies by streamlining and providing clarity on regulatory requirements, which matters for RA teams as it will enable them to navigate the complex process more efficiently and facilitate the timely entry of life-saving treatments into the market."}, {"label": "EMA Guidelines", "color": "#8B6914", "bg": "#FBF5E6", "title": "Pharmacovigilance-related regulatory recommendations for centrally authorised veterinary medicinal products during 2026", "link": "https://www.ema.europa.eu/en/documents/regulatory-procedural-guideline/pharmacovigilance-related-regulatory-recommendations-centrally-authorised-veterinary-medicinal-products-during-2026_en.pdf", "date": "01 Jun 2026", "summary": "Regulatory recommendations for pharmacovigilance-related activities for centrally authorised veterinary medicinal products have been aligned with human pharmaceuticals, emphasizing the importance of robust risk management and pharmacovigilance systems for RA teams to ensure compliance with evolving regulations and maintain market access."}];
+let currentFilter = 'all';
+
+function renderCards(data) {
+  const grid = document.getElementById('grid');
+  document.getElementById('resultsInfo').textContent = data.length + ' update' + (data.length !== 1 ? 's' : '') + ' shown';
+  if (data.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><p style="font-size:18px;margin-bottom:8px">No updates found</p><p>Try adjusting your search or filter.</p></div>';
+    return;
+  }
+  grid.innerHTML = data.map(e => `
+    <div class="card" data-label="${e.label}">
+      <div class="card-top" style="background:${e.color}"></div>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="card-badge" style="background:${e.bg};color:${e.color}">${e.label}</span>
+          <span class="card-date">${e.date}</span>
+        </div>
+        <div class="card-title">${e.title}</div>
+        <div class="card-summary">${e.summary}</div>
+        <a class="card-link" href="${e.link}" target="_blank">View source →</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCards() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = entries.filter(e => {
+    const matchFilter = currentFilter === 'all' || e.label === currentFilter;
+    const matchSearch = !q || e.title.toLowerCase().includes(q) || e.summary.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+  renderCards(filtered);
+}
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterCards();
+}
+
+renderCards(entries);
+</script>
 </body>
 </html>
