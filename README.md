@@ -28,4 +28,4 @@ Regulatory Affairs professionals spend significant time manually monitoring agen
 - [FDA Press Releases](https://www.fda.gov/news-events/fda-newsroom/press-announcements)
 
 ## Background
-Built as part of a regulatory affairs portfolio ahead of an MSc in Process Validation and Regulatory Affairs (Technological University of the Shannon, 2026). Prior experience includes regulatory lifecycle management across 13 markets and 220+ SKUs at Dabur International.
+Built as part of a regulatory affairs portfolio ahead of an MSc in Process Validation and Regulatory Affairs (Technological University of the Shannon, 2026). Prior experience as Regulatory Affairs intern in Dabur International Ltd. and Quality Control intern in Vieco Pharmaceuticals
