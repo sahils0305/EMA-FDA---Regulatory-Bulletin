@@ -5,14 +5,14 @@ A live, AI-powered regulatory intelligence tool monitoring 8 global health autho
 ## 🔗 Live demo
 👉 [sahils0305.github.io/EMA-FDA---Regulatory-Bulletin](https://sahils0305.github.io/EMA-FDA---Regulatory-Bulletin/)
 
-## Agencies monitored
+## Agencies & bodies monitored
 - 🇪🇺 EMA — News & Press Releases
 - 🇪🇺 EMA — Regulatory & Procedural Guidelines
 - 🇺🇸 FDA — Press Releases
 - 🇬🇧 MHRA — Inspectorate Updates
 - 🇦🇺 TGA — Therapeutic Goods Administration
 - 🇨🇦 Health Canada — Drug Products
-- 🌍 IMDRF — International Medical Device Regulators Forum
+- 🌍 IMDRF — International Medical Device Regulators Forum (global harmonization body)
 - 🌍 WHO — World Health Organization
 
 ## What it does
