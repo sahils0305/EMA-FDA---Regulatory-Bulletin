@@ -89,6 +89,18 @@ for feed_info in FEEDS:
         print(f"✓ {feed_info['label']}: {count} items")
     except Exception as e:
         print(f"✗ {feed_info['label']} failed: {e}")
+
+def is_future_date(date_str):
+    if not date_str:
+        return False
+    try:
+        from dateutil import parser as dateparser
+        deadline = dateparser.parse(date_str, dayfirst=True)
+        if deadline and deadline.replace(tzinfo=None) > datetime.now():
+            return True
+    except Exception:
+        pass
+    return False
  
 # DEDUPLICATION
 def similar(a, b):
@@ -486,7 +498,7 @@ STATS_HTML = f"""
 if consultations:
     consult_cards = ""
     for c in consultations:
-        deadline_html = f'<span class="consult-deadline">Closes: {c["consultation_deadline"]}</span>' if c.get("consultation_deadline") else ''
+        deadline_html = f'<span class="consult-deadline">Closes: {c["consultation_deadline"]}</span>' if c.get("consultation_deadline") and is_future_date(c["consultation_deadline"]) else ''
         consult_cards += f"""
         <div class="consult-card">
           <div class="consult-card-label">
