@@ -44,7 +44,7 @@ cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 all_entries = []
 
 import socket
-socket.setdefaulttimeout(25)
+socket.setdefaulttimeout(60)
 
 for feed_info in FEEDS:
     try:
