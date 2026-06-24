@@ -158,7 +158,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;height:58px;display:flex;ali
 /* HOW */
 .how{background:#060C18}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:56px;position:relative}
-.steps::before{content:'';position:absolute;top:32px;left:calc(16.66% + 20px);right:calc(16.66% + 20px);height:1px;background:repeating-linear-gradient(90deg,#C9A050 0,#C9A050 5px,transparent 5px,transparent 12px)}
 .step{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:30px 26px;transition:border-color .3s}
 .step:hover{border-color:rgba(201,160,80,0.3)}
 .step-n{width:48px;height:48px;background:linear-gradient(135deg,#C9A050,#D4AE60);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#080D1A;margin-bottom:18px;position:relative;z-index:1;box-shadow:0 4px 16px rgba(201,160,80,0.35)}
