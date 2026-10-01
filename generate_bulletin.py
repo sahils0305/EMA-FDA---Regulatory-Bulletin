@@ -24,7 +24,7 @@ Return this exact JSON structure:
   "consultation_deadline": "If action_type is Consultation and a deadline is mentioned extract it as DD Mon YYYY otherwise null"
 }}"""
     response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+       model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200
     )
