@@ -24,9 +24,10 @@ Return this exact JSON structure:
   "consultation_deadline": "If action_type is Consultation and a deadline is mentioned extract it as DD Mon YYYY otherwise null"
 }}"""
     response = client.chat.completions.create(
-       model="openai/gpt-oss-20b",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=200
+        max_tokens=400,
+        reasoning_effort="low"
     )
     text = response.choices[0].message.content.strip()
     try:
