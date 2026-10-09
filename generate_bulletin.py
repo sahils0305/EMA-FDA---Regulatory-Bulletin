@@ -2,46 +2,72 @@ import feedparser
 import time
 import json
 import os
+import sys
 import socket
 from datetime import datetime, timedelta, timezone
 from groq import Groq
- 
+
 client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
 socket.setdefaulttimeout(60)
- 
+
+MODEL = "openai/gpt-oss-20b"
+PROMPT_VERSION = "v2"
+# Some regulators (e.g. WHO, TGA) refuse requests that do not look like a browser
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+
+ALLOWED_TYPES = ["Guideline", "Safety Alert", "Approval", "Consultation", "Withdrawal", "Policy Change", "Procedural"]
+ALLOWED_ACTIONS = ["Action Required", "Monitor", "Awareness"]
+ALLOWED_AREAS = ["Small Molecule", "Biologic", "ATMP", "Medical Device", "IVD", "Veterinary", "General"]
+
+def pick(value, allowed):
+    """Return the allowed label matching value, or raise (so the failure is counted, not hidden)."""
+    if isinstance(value, str):
+        for a in allowed:
+            if value.strip().lower() == a.lower():
+                return a
+    raise ValueError(f"unexpected value {value!r}")
+
 def analyze_entry(title, description=""):
     prompt = f"""You are a senior regulatory affairs professional. Analyze this regulatory update and return ONLY a valid JSON object with no other text.
- 
+Use only information supported by the title and description. Do not invent dates, products or requirements.
+
 Title: {title}
 Description: {description}
- 
+
 Return this exact JSON structure:
 {{
-  "summary": "One clear sentence explaining what changed and why it matters for RA teams",
+  "summary": "One clear sentence explaining what changed",
+  "why_it_matters": "One sentence on the practical implication for an RA team: who is affected and what they should consider",
   "action_type": "One of: Guideline | Safety Alert | Approval | Consultation | Withdrawal | Policy Change | Procedural",
   "action_required": "One of: Action Required | Monitor | Awareness",
   "therapeutic_area": "One of: Small Molecule | Biologic | ATMP | Medical Device | IVD | Veterinary | General",
   "consultation_deadline": "If action_type is Consultation and a deadline is mentioned extract it as DD Mon YYYY otherwise null"
 }}"""
     response = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=400,
+        max_tokens=500,
         reasoning_effort="low"
     )
-    text = response.choices[0].message.content.strip()
-    try:
-        start = text.find('{')
-        end = text.rfind('}') + 1
-        return json.loads(text[start:end])
-    except Exception:
-        return {
-            "summary": text[:300] if len(text) > 10 else "Summary unavailable.",
-            "action_type": "General",
-            "action_required": "Awareness",
-            "therapeutic_area": "General",
-            "consultation_deadline": None
-        }
+    text = (response.choices[0].message.content or "").strip()
+    start = text.find('{')
+    end = text.rfind('}') + 1
+    data = json.loads(text[start:end])          # raises if the JSON is broken
+    summary = data.get("summary")
+    if not isinstance(summary, str) or len(summary) < 10:
+        raise ValueError("missing summary")
+    why = data.get("why_it_matters")
+    deadline = data.get("consultation_deadline")
+    if not isinstance(deadline, str) or deadline.strip().lower() in ("", "null", "none", "n/a"):
+        deadline = None
+    return {
+        "summary": summary.strip(),
+        "why_it_matters": why.strip() if isinstance(why, str) and len(why) > 5 else None,
+        "action_type": pick(data.get("action_type"), ALLOWED_TYPES),
+        "action_required": pick(data.get("action_required"), ALLOWED_ACTIONS),
+        "therapeutic_area": pick(data.get("therapeutic_area"), ALLOWED_AREAS),
+        "consultation_deadline": deadline,
+    }
  
 FEEDS = [
     {"url": "https://www.ema.europa.eu/en/news.xml",
@@ -56,40 +82,60 @@ FEEDS = [
      "label": "TGA", "color": "#C084FC", "glow": "rgba(192,132,252,0.18)", "bg": "rgba(192,132,252,0.1)"},
     {"url": "https://www.canada.ca/content/dam/hc-sc/migration/hc-sc/rss/dhp-mps/prod-eng.xml",
      "label": "Health Canada", "color": "#FB923C", "glow": "rgba(251,146,60,0.18)", "bg": "rgba(251,146,60,0.1)"},
-    {"url": "https://www.imdrf.org/news-events/news.xml",
-     "label": "IMDRF", "color": "#22D3EE", "glow": "rgba(34,211,238,0.18)", "bg": "rgba(34,211,238,0.1)"},
     {"url": "https://www.who.int/rss-feeds/news-english.xml",
      "label": "WHO", "color": "#38BDF8", "glow": "rgba(56,189,248,0.18)", "bg": "rgba(56,189,248,0.1)"},
 ]
  
 cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 raw_entries = []
- 
+source_health = {}
+
 for feed_info in FEEDS:
+    label = feed_info["label"]
+    health = {"label": label, "status": "Failed", "items_30d": 0, "items_total": 0,
+              "latest_item": None, "http_status": None, "error": None}
+    latest_dt = None
     try:
-        feed = feedparser.parse(feed_info["url"])
-        count = 0
+        feed = feedparser.parse(feed_info["url"], request_headers=HEADERS)
+        health["http_status"] = feed.get("status")
+        health["items_total"] = len(feed.entries)
+        if feed.get("bozo") and not feed.entries:
+            health["error"] = str(feed.get("bozo_exception"))[:150]
         for entry in feed.entries:
             try:
-                published_dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                pp = entry.get("published_parsed") or entry.get("updated_parsed")
+                published_dt = datetime(*pp[:6], tzinfo=timezone.utc)
+                if latest_dt is None or published_dt > latest_dt:
+                    latest_dt = published_dt
                 if published_dt >= cutoff:
                     raw_entries.append({
-                        "label": feed_info["label"],
+                        "label": label,
                         "color": feed_info["color"],
                         "glow": feed_info["glow"],
                         "bg": feed_info["bg"],
                         "title": entry.title,
                         "link": entry.link,
-                        "date": datetime(*entry.published_parsed[:6]).strftime("%d %b %Y"),
-                        "date_sort": datetime(*entry.published_parsed[:6]).strftime("%Y-%m-%d"),
-                        "description": entry.get("summary", "")
+                        "date": published_dt.strftime("%d %b %Y"),
+                        "date_sort": published_dt.strftime("%Y-%m-%d"),
+                        "description": entry.get("summary", "")[:1500]
                     })
-                    count += 1
+                    health["items_30d"] += 1
             except Exception:
                 pass
-        print(f"✓ {feed_info['label']}: {count} items")
+        if latest_dt:
+            health["latest_item"] = latest_dt.strftime("%d %b %Y")
+        http = health["http_status"]
+        if (http and http >= 400) or health["items_total"] == 0:
+            health["status"] = "Failed"
+        elif health["items_30d"] == 0:
+            health["status"] = "No new updates"
+        else:
+            health["status"] = "Operational"
     except Exception as e:
-        print(f"✗ {feed_info['label']} failed: {e}")
+        health["error"] = str(e)[:150]
+    source_health[label] = health
+    print(f"{'✓' if health['status'] == 'Operational' else '!'} {label}: {health['items_30d']} items "
+          f"({health['status']}, HTTP {health['http_status']}, latest {health['latest_item']})")
 
 def is_future_date(date_str):
     if not date_str:
@@ -129,33 +175,76 @@ print(f"\n✓ {len(raw_entries)} raw items → {len(all_entries)} after deduplic
 all_entries.sort(key=lambda e: e["date_sort"], reverse=True)
 print(f"✓ Analyzing entries with AI...")
  
+ai_failures = 0
+retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 for entry in all_entries:
-    try:
-        analysis = analyze_entry(entry["title"], entry.get("description", ""))
-        entry["summary"] = analysis.get("summary", "Summary unavailable.")
-        entry["action_type"] = analysis.get("action_type", "General")
-        entry["action_required"] = analysis.get("action_required", "Awareness")
-        entry["therapeutic_area"] = analysis.get("therapeutic_area", "General")
-        entry["consultation_deadline"] = analysis.get("consultation_deadline", None)
-        time.sleep(2)
-    except Exception as e:
-        entry["summary"] = "Summary unavailable."
-        entry["action_type"] = "General"
-        entry["action_required"] = "Awareness"
-        entry["therapeutic_area"] = "General"
+    entry["retrieved_at"] = retrieved_at
+    entry["model"] = MODEL
+    entry["prompt_version"] = PROMPT_VERSION
+    analysis = None
+    last_error = None
+    for attempt in range(2):
+        try:
+            analysis = analyze_entry(entry["title"], entry.get("description", ""))
+            break
+        except Exception as e:
+            last_error = e
+            time.sleep(6)
+    if analysis:
+        entry["ai_ok"] = True
+        entry["summary"] = analysis["summary"]
+        entry["action_type"] = analysis["action_type"]
+        entry["action_required"] = analysis["action_required"]
+        entry["therapeutic_area"] = analysis["therapeutic_area"]
+        entry["why_it_matters"] = analysis["why_it_matters"]
+        entry["consultation_deadline"] = analysis["consultation_deadline"]
+    else:
+        ai_failures += 1
+        entry["ai_ok"] = False
+        entry["summary"] = None
+        entry["action_type"] = None
+        entry["action_required"] = None
+        entry["therapeutic_area"] = None
+        entry["why_it_matters"] = None
         entry["consultation_deadline"] = None
-        print(f"Skipped: {e}")
+        print(f"::warning::AI analysis failed for '{entry['title'][:70]}': {last_error}")
+    time.sleep(2)
+
+# AI-FAILURE TRIPWIRE: never silently publish a page full of empty analyses
+total_ai = len(all_entries)
+print(f"✓ AI analysis: {total_ai - ai_failures}/{total_ai} succeeded, {ai_failures} failed")
+if total_ai and ai_failures / total_ai > 0.25:
+    print(f"::error::AI TRIPWIRE: {ai_failures}/{total_ai} analyses failed (>25%). Not publishing. Check the model name, API key and Groq status.")
+    sys.exit(1)
+elif ai_failures:
+    print(f"::warning::{ai_failures} item(s) published without AI analysis")
  
 print("✓ Building website...")
  
-generated = datetime.now().strftime("%d %b %Y, %H:%M UTC")
-entries_json = json.dumps(all_entries)
+generated = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
+today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+n_ok = sum(1 for h in source_health.values() if h["status"] == "Operational")
+
+# DAILY SNAPSHOT (kept in the repo so trends can be analysed later)
+os.makedirs("data", exist_ok=True)
+with open(f"data/{today_str}.json", "w", encoding="utf-8") as f:
+    json.dump({
+        "generated_at": generated,
+        "model": MODEL,
+        "prompt_version": PROMPT_VERSION,
+        "ai_failures": ai_failures,
+        "source_health": list(source_health.values()),
+        "entries": all_entries,
+    }, f, ensure_ascii=False, indent=1)
+
+# The page does not need the raw feed descriptions
+page_entries = [{k: v for k, v in e.items() if k != "description"} for e in all_entries]
+entries_json = json.dumps(page_entries).replace("</", "<\\/")
 source_counts = {}
 for e in all_entries:
     source_counts[e["label"]] = source_counts.get(e["label"], 0) + 1
  
-consultations = [e for e in all_entries if e.get("action_type") == "Consultation"]
-featured = all_entries[0] if all_entries else None
+consultations = [e for e in all_entries if e.get("ai_ok") and e.get("action_type") == "Consultation"]
  
 # ACTION REQUIRED config
 AR_CONFIG = {
@@ -367,9 +456,42 @@ footer{background:#050A15;border-top:1px solid rgba(255,255,255,0.05);padding:56
   .ft-i{flex-direction:column}
   .consult-grid{grid-template-columns:1fr}
 }
+
+/* FACT vs AI ZONES */
+.zone{padding:12px 14px;border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.zone-src{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07)}
+.zone-ai{background:rgba(201,160,80,0.04);border:1px dashed rgba(201,160,80,0.25)}
+.zone-l{font-size:9px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#4B5E7A}
+.zone-ai .zone-l{color:#C9A050}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.why-line{font-size:12px;color:#8A9BB5;line-height:1.6}
+.why-line strong{color:#EEF2FF;font-weight:600}
+.ai-na{font-size:12px;color:#6B7A99;font-style:italic}
+.trace{font-size:9.5px;color:#4B5E7A;font-family:monospace;line-height:1.5}
+.card-body{gap:10px}
+.feat-inner{display:flex;flex-direction:column;gap:14px}
+.feat-inner .feat-meta{margin-bottom:4px}
+.feat-inner .feat-title{margin-bottom:6px}
+.feat-inner .card-sum{font-size:14px}
+
+/* DISCLAIMER + SOURCE HEALTH */
+.disc{background:#080D1A;border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 32px}
+.disc-i{max-width:1140px;margin:0 auto;font-size:12px;color:#6B7A99;line-height:1.7;padding:10px 14px;border-left:2px solid #C9A050;background:rgba(201,160,80,0.04);border-radius:0 6px 6px 0}
+.disc-i strong{color:#C9A050;font-weight:600}
+.health{background:#0A101F;border-bottom:1px solid rgba(255,255,255,0.06);padding:22px 32px}
+.health-i{max-width:1140px;margin:0 auto}
+.health-h{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#C9A050;font-weight:700;margin-bottom:12px}
+.health-h span{color:#4B5E7A;font-weight:500;letter-spacing:.5px;text-transform:none;margin-left:8px}
+.health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.hs{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}
+.hs-dot{width:8px;height:8px;border-radius:50%}
+.hs-n{font-size:13px;font-weight:700;color:#EEF2FF}
+.hs-s{grid-column:2;font-size:11px;font-weight:600}
+.hs-m{grid-column:2;font-size:10.5px;color:#4B5E7A}
+@media(max-width:600px){.disc,.health{padding-left:16px;padding-right:16px}}
 """
  
-JS_DATA = f"const entries={entries_json};"
+JS_DATA = f"const entries={entries_json};const SRC_COUNT={n_ok};"
 JS_LOGIC = r"""
 let currentFilter='all';
 const featWrap=document.getElementById('featWrap');
@@ -380,75 +502,113 @@ const AR_COLORS={
   'Awareness':'#34D399'
 };
  
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function aiZone(e){
+  if(!e.ai_ok){
+    return `<div class="zone zone-ai"><div class="zone-l">AI-assisted analysis</div><div class="ai-na">Analysis unavailable for this item. Please refer to the official source.</div></div>`;
+  }
+  const arColor=AR_COLORS[e.action_required]||'#6B7A99';
+  const why=e.why_it_matters?`<div class="why-line"><strong>Why it matters:</strong> ${esc(e.why_it_matters)}</div>`:'';
+  return `<div class="zone zone-ai">
+    <div class="zone-l">AI-assisted analysis</div>
+    <div class="tag-row">
+      <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:#8A9BB5">${esc(e.action_type||'Unclassified')}</span>
+      <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:#8A9BB5">${esc(e.therapeutic_area||'General')}</span>
+      <span class="card-ar"><span class="ar-dot" style="background:${arColor};box-shadow:0 0 6px ${arColor}"></span><span class="ar-label" style="color:${arColor}">${esc(e.action_required||'Not assessed')}</span></span>
+    </div>
+    <div class="card-sum">${esc(e.summary)}</div>
+    ${why}
+    <div class="trace">${esc(e.model)} · prompt ${esc(e.prompt_version)} · retrieved ${esc(e.retrieved_at)}</div>
+  </div>`;
+}
+
+function renderFeat(e){
+  if(!e){featWrap.innerHTML='';return;}
+  featWrap.innerHTML=`<div class="feat" style="background:linear-gradient(120deg,${e.glow} 0%,rgba(255,255,255,0.02) 55%);border-left:4px solid ${e.color}">
+    <div class="feat-inner">
+      <div class="zone zone-src">
+        <div class="feat-meta">
+          <span class="feat-new">Latest Update</span>
+          <span class="c-badge" style="background:${e.bg};color:${e.color}">${esc(e.label)}</span>
+          <span class="feat-date">${esc(e.date)}</span>
+        </div>
+        <div class="zone-l">Official source information</div>
+        <div class="feat-title">${esc(e.title)}</div>
+        <div><a href="${esc(e.link)}" target="_blank" rel="noopener" class="feat-link" style="color:${e.color};border-color:${e.color};background:${e.bg}">Read full update →</a></div>
+      </div>
+      ${aiZone(e)}
+    </div>
+  </div>`;
+}
+
 function renderGrid(data){
   const g=document.getElementById('grid');
   if(!data.length){g.innerHTML='<div class="empty"><p>No updates found</p><span>Try a different filter or search term.</span></div>';return;}
   g.innerHTML=data.map((e,i)=>{
-    const arColor=AR_COLORS[e.action_required]||'#34D399';
-    const alsoCovered=e.also_covered_by&&e.also_covered_by.length?`<div class="also-covered">Also covered by: <span>${e.also_covered_by.join(', ')}</span></div>`:'';
+    const alsoCovered=e.also_covered_by&&e.also_covered_by.length?`<div class="also-covered">Also covered by: <span>${e.also_covered_by.map(esc).join(', ')}</span></div>`:'';
     return `
     <div class="card" style="--c:${e.color};--g:${e.glow};animation-delay:${Math.min(i*0.05,0.4)}s">
       <div class="card-stripe" style="background:${e.color}"></div>
       <div class="card-body">
-        <div class="card-meta">
-          <span class="c-badge" style="background:${e.bg};color:${e.color}">${e.label}</span>
-          <span class="card-date">${e.date}</span>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:#8A9BB5">${e.action_type||'General'}</span>
-          <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:#8A9BB5">${e.therapeutic_area||'General'}</span>
-        </div>
-        <div class="card-title">${e.title}</div>
-        <div class="card-sum">${e.summary}</div>
-        ${alsoCovered}
-        <div class="card-footer">
-          <a class="card-lnk" href="${e.link}" target="_blank" style="color:${e.color}">View source →</a>
-          <div class="card-ar">
-            <span class="ar-dot" style="background:${arColor};box-shadow:0 0 6px ${arColor}"></span>
-            <span class="ar-label" style="color:${arColor}">${e.action_required||'Awareness'}</span>
+        <div class="zone zone-src">
+          <div class="zone-l">Official source information</div>
+          <div class="card-meta">
+            <span class="c-badge" style="background:${e.bg};color:${e.color}">${esc(e.label)}</span>
+            <span class="card-date">${esc(e.date)}</span>
           </div>
+          <div class="card-title">${esc(e.title)}</div>
+          ${alsoCovered}
+          <a class="card-lnk" href="${esc(e.link)}" target="_blank" rel="noopener" style="color:${e.color}">View source →</a>
         </div>
+        ${aiZone(e)}
       </div>
     </div>`;
   }).join('');
 }
- 
+
 function filterCards(){
   const q=document.getElementById('srch').value.toLowerCase().trim();
   const isDefault=currentFilter==='all'&&!q;
   const info=document.getElementById('resInfo');
   if(isDefault){
     featWrap.style.display='block';
+    renderFeat(entries[0]);
     renderGrid(entries.slice(1));
-    info.textContent=entries.length+' updates across 8 agencies in the last 30 days';
+    info.textContent=entries.length+' updates from '+SRC_COUNT+' sources in the last 30 days';
   } else {
     featWrap.style.display='none';
     const f=entries.filter(e=>{
       const mf=currentFilter==='all'||e.label===currentFilter;
-      const ms=!q||e.title.toLowerCase().includes(q)||e.summary.toLowerCase().includes(q)||e.label.toLowerCase().includes(q)||(e.action_type||'').toLowerCase().includes(q)||(e.therapeutic_area||'').toLowerCase().includes(q);
+      const ms=!q||(e.title||'').toLowerCase().includes(q)||(e.summary||'').toLowerCase().includes(q)||(e.why_it_matters||'').toLowerCase().includes(q)||e.label.toLowerCase().includes(q)||(e.action_type||'').toLowerCase().includes(q)||(e.therapeutic_area||'').toLowerCase().includes(q);
       return mf&&ms;
     });
     renderGrid(f);
     info.textContent=f.length+' update'+(f.length!==1?'s':'')+' shown';
   }
 }
- 
+
 function setFilter(f,btn){
   currentFilter=f;
   document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   filterCards();
 }
- 
+
 function copyBrief(){
   const btn=document.getElementById('copyBtn');
-  const lines=['REGULATORY INTELLIGENCE BRIEF','Generated: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),'='+'='.repeat(49),''];
+  const lines=['REGULATORY INTELLIGENCE BRIEF','Generated: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),'Note: AI-assisted analysis is a screening aid, not validated, and does not replace review of the official source.','='.repeat(50),''];
   entries.forEach((e,i)=>{
     lines.push(`${i+1}. [${e.label}] ${e.date}`);
     lines.push(`   ${e.title}`);
-    lines.push(`   Type: ${e.action_type||'General'} | Area: ${e.therapeutic_area||'General'} | ${e.action_required||'Awareness'}`);
-    lines.push(`   ${e.summary}`);
     lines.push(`   Source: ${e.link}`);
+    if(e.ai_ok){
+      lines.push(`   AI analysis - Type: ${e.action_type||'Unclassified'} | Area: ${e.therapeutic_area||'General'} | ${e.action_required||'Not assessed'}`);
+      lines.push(`   ${e.summary}`);
+      if(e.why_it_matters) lines.push(`   Why it matters: ${e.why_it_matters}`);
+    } else {
+      lines.push('   AI analysis unavailable for this item.');
+    }
     lines.push('');
   });
   navigator.clipboard.writeText(lines.join('\n')).then(()=>{
@@ -457,7 +617,7 @@ function copyBrief(){
     setTimeout(()=>{btn.textContent='Copy Weekly Brief';btn.classList.remove('copied');},3000);
   });
 }
- 
+
 filterCards();
 """
 JS = JS_DATA + "\n" + JS_LOGIC
@@ -489,11 +649,33 @@ FILTER_HTML = "\n".join(filter_parts)
  
 STATS_HTML = f"""
 <div class="stat"><div class="stat-n">{len(all_entries)}</div><div class="stat-l">Updates</div></div>
-<div class="stat"><div class="stat-n">8</div><div class="stat-l">Agencies</div></div>
+<div class="stat"><div class="stat-n">{n_ok}<span style="font-size:16px;color:#4B5E7A">/{len(FEEDS)}</span></div><div class="stat-l">Sources Reporting</div></div>
 <div class="stat"><div class="stat-n">{len(consultations)}</div><div class="stat-l">Open Consultations</div></div>
 <div class="stat"><div class="stat-n">30</div><div class="stat-l">Day Window</div></div>
 <div class="stat"><div class="stat-n" style="color:#34D399">Daily</div><div class="stat-l">Auto-refresh</div></div>
 """
+
+# SOURCE HEALTH PANEL
+HEALTH_COLORS = {"Operational": "#34D399", "No new updates": "#FBBF24", "Failed": "#F87171"}
+health_cards = ""
+for fi in FEEDS:
+    h = source_health[fi["label"]]
+    hc = HEALTH_COLORS[h["status"]]
+    latest = h["latest_item"] or "n/a"
+    health_cards += (
+        f'<div class="hs"><span class="hs-dot" style="background:{hc};box-shadow:0 0 6px {hc}"></span>'
+        f'<span class="hs-n">{fi["label"]}</span>'
+        f'<span class="hs-s" style="color:{hc}">{h["status"]}</span>'
+        f'<span class="hs-m">{h["items_30d"]} items in 30 days · latest {latest}</span></div>'
+    )
+HEALTH_HTML = f"""
+<div class="health"><div class="health-i">
+  <div class="health-h">Source health<span>checked {generated}</span></div>
+  <div class="health-grid">{health_cards}</div>
+</div></div>"""
+
+DISCLAIMER_HTML = """
+<div class="disc"><div class="disc-i"><strong>How to read this page.</strong> The <strong>Official source information</strong> on each item (title, date, link) comes directly from the regulator's own feed. The <strong>AI-assisted analysis</strong> (summary, classification, why it matters) is generated by a language model; the model and prompt version are shown on every item. It has not yet been independently validated, it is a screening aid only, and it does not determine compliance or replace review of the primary source.</div></div>"""
  
 # Consultation section
 if consultations:
@@ -523,45 +705,20 @@ if consultations:
 else:
     CONSULT_HTML = ""
  
-# Featured card
-if featured:
-    feat_bg = f"linear-gradient(120deg, {featured['glow']} 0%, rgba(255,255,255,0.02) 55%)"
-    ar_color = AR_CONFIG.get(featured.get("action_required", "Awareness"), AR_CONFIG["Awareness"])
-    at_color = AT_CONFIG.get(featured.get("action_type", "General"), "#8A9BB5")
-    FEAT_HTML = f"""
-<div class="feat-wrap" id="featWrap">
-  <div class="feat" style="background:{feat_bg};border-left:4px solid {featured['color']}">
-    <div class="feat-inner">
-      <div class="feat-meta">
-        <span class="feat-new">Latest Update</span>
-        <span class="c-badge" style="background:{featured['bg']};color:{featured['color']}">{featured['label']}</span>
-        <span class="feat-date">{featured['date']}</span>
-      </div>
-      <div class="feat-title">{featured['title']}</div>
-      <div class="feat-sum">{featured['summary']}</div>
-      <div class="feat-tags">
-        <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:{at_color}">{featured.get('action_type','General')}</span>
-        <span class="tag-sm" style="background:rgba(255,255,255,0.06);color:#8A9BB5">{featured.get('therapeutic_area','General')}</span>
-        <span style="display:flex;align-items:center;gap:5px">
-          <span class="ar-dot" style="background:{ar_color['dot']};box-shadow:0 0 6px {ar_color['dot']}"></span>
-          <span class="ar-label" style="color:{ar_color['color']}">{featured.get('action_required','Awareness')}</span>
-        </span>
-      </div>
-      <a href="{featured['link']}" target="_blank" class="feat-link" style="color:{featured['color']};border-color:{featured['color']};background:{featured['bg']}">Read full update →</a>
-    </div>
-  </div>
-</div>"""
-else:
-    FEAT_HTML = '<div id="featWrap" style="display:none"></div>'
+# Featured card is rendered by JavaScript (same fact/AI layout as the grid)
+FEAT_HTML = '<div class="feat-wrap" id="featWrap"></div>'
  
 chips = []
 for fi in FEEDS:
+    st = source_health.get(fi["label"], {}).get("status", "Failed")
+    dim = "opacity:.4;" if st == "Failed" else ""
     chips.append(
-        f'<span class="agency-chip">'
+        f'<span class="agency-chip" style="{dim}">'
         f'<span class="agency-glow" style="background:{fi["color"]};box-shadow:0 0 8px {fi["color"]}"></span>'
         f'{fi["label"]}</span>'
     )
 CHIPS_HTML = "\n".join(chips)
+STEP_TAGS = "".join(f'<span class="step-tag">{fi["label"]}</span>' for fi in FEEDS)
  
 html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -582,7 +739,7 @@ html = f"""<!DOCTYPE html>
       <a href="#bulletin">Bulletin</a>
       <a href="https://www.linkedin.com/in/sahil-subramaniam-1007272b3" target="_blank">LinkedIn</a>
     </div>
-    <div class="nav-pill"><div class="nav-dot"></div> Live · 8 Agencies</div>
+    <div class="nav-pill"><div class="nav-dot"></div> Live · {len(FEEDS)} Sources</div>
   </div>
 </nav>
  
@@ -593,7 +750,7 @@ html = f"""<!DOCTYPE html>
   <div class="hero-i">
     <div class="hero-eye"><div class="nav-dot"></div> Global Regulatory Intelligence</div>
     <h1>RA professionals deserve<br><span class="gold">better tools.</span></h1>
-    <p class="hero-sub">AI is reshaping every industry. Regulatory Affairs should be no different. This tool monitors 8 global agencies daily — so you can focus on the work that actually matters.</p>
+    <p class="hero-sub">AI is reshaping every industry. Regulatory Affairs should be no different. This tool monitors {len(FEEDS)} regulatory bodies daily — so you can focus on the work that actually matters.</p>
     <div class="hero-ctas">
       <a href="#bulletin" class="btn-gold">View Live Bulletin</a>
       <a href="#why" class="btn-ghost">Why I built this</a>
@@ -611,7 +768,7 @@ html = f"""<!DOCTYPE html>
         <p>During my time as a Regulatory Affairs intern at <strong>Dabur International Ltd.</strong> in Dubai, one of my tasks was to manually visit health authority websites across multiple markets — checking for updates to herbal and health product regulations, one country at a time.</p>
         <p>It was tedious, time-consuming, and entirely manual. Every update had to be found, read, interpreted, and logged by hand. For a function as critical as regulatory affairs, it felt like an unnecessary drain on time that could be spent on actual strategy.</p>
         <p>That experience planted the seed. <strong>AI is ubiquitous now</strong> — it's reshaping finance, medicine, law. Regulatory Affairs, with its volume of documentation, multi-market complexity, and constant change, is exactly where it can make a real difference. Not to replace RA professionals, but to handle the tedious so they can focus on the holistic.</p>
-        <p>This tool is a small proof of that idea — built as I prepare to begin my <strong>MSc in Process Validation and Regulatory Affairs</strong> at The Technological University of The Shannon, Moylish Campus, Limerick, Ireland.</p>
+        <p>This tool is a small proof of that idea — built alongside my <strong>MSc in Process Validation and Regulatory Affairs (Pharmaceuticals)</strong> at the Technological University of the Shannon (TUS), Moylish Campus, Limerick.</p>
       </div>
       <div class="why-right">
         <div class="why-pull">
@@ -623,8 +780,8 @@ html = f"""<!DOCTYPE html>
           <div class="cred-v">RA Intern — Dabur International Ltd., Dubai<br>QC Intern — Vieco Pharmaceuticals, Dubai</div>
         </div>
         <div class="cred">
-          <div class="cred-l">Currently</div>
-          <div class="cred-v">Prospective MSc student — Process Validation &amp; Regulatory Affairs<br>The Technological University of The Shannon, Moylish Campus, Limerick, Ireland</div>
+          <div class="cred-l">Studying</div>
+          <div class="cred-v">MSc Process Validation &amp; Regulatory Affairs (Pharmaceuticals) student<br>TUS Moylish Campus, Limerick, Ireland</div>
         </div>
       </div>
     </div>
@@ -640,17 +797,17 @@ html = f"""<!DOCTYPE html>
       <div class="step">
         <div class="step-n">1</div>
         <h3>Fetch &amp; Deduplicate</h3>
-        <p>Every day at 7am UTC, the tool pulls live updates from 8 official regulatory RSS feeds, then deduplicates entries that appear across multiple agencies.</p>
+        <p>Every day at 7am UTC, the tool pulls live updates from {len(FEEDS)} official regulatory RSS feeds, checks each source's health, and deduplicates entries that appear across multiple sources.</p>
         <div class="step-tags">
-          <span class="step-tag">EMA</span><span class="step-tag">FDA</span><span class="step-tag">MHRA</span><span class="step-tag">TGA</span><span class="step-tag">Health Canada</span><span class="step-tag">IMDRF</span><span class="step-tag">WHO</span>
+          {STEP_TAGS}
         </div>
       </div>
       <div class="step">
         <div class="step-n">2</div>
         <h3>Analyze</h3>
-        <p>Each update is analyzed by AI — generating a plain-language summary, classifying the update type, flagging action required, and tagging the therapeutic area.</p>
+        <p>Each update is analyzed by AI — generating a plain-language summary, a "why it matters" note, the update type, an action flag and a therapeutic-area tag. AI output is kept visually separate from official source information, stamped with model and prompt version, and is a screening aid that has not yet been independently validated.</p>
         <div class="step-tags">
-          <span class="step-tag">Groq API</span><span class="step-tag">Llama 3.1</span><span class="step-tag">Action Classification</span><span class="step-tag">TA Tagging</span>
+          <span class="step-tag">Groq API</span><span class="step-tag">GPT-OSS 20B</span><span class="step-tag">Action Classification</span><span class="step-tag">TA Tagging</span>
         </div>
       </div>
       <div class="step">
@@ -684,6 +841,9 @@ html = f"""<!DOCTYPE html>
   <div class="stats">
     <div class="stats-i">{STATS_HTML}</div>
   </div>
+
+  {HEALTH_HTML}
+  {DISCLAIMER_HTML}
  
   <div class="legend">
     <div class="legend-i">{LEGEND_HTML}</div>
@@ -693,13 +853,13 @@ html = f"""<!DOCTYPE html>
     <div class="ctrl">
       <div class="srch-w">
         <svg class="srch-ic" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input class="srch" id="srch" type="text" placeholder="Search across all agencies..." oninput="filterCards()">
+        <input class="srch" id="srch" type="text" placeholder="Search across all sources..." oninput="filterCards()">
       </div>
       <div class="filters">{FILTER_HTML}</div>
     </div>
   </div>
  
-  <div class="res-info" id="resInfo">{len(all_entries)} updates across 8 agencies in the last 30 days</div>
+  <div class="res-info" id="resInfo">{len(all_entries)} updates from {n_ok} sources in the last 30 days</div>
   {FEAT_HTML}
   <div class="grid" id="grid"></div>
 </div>
@@ -722,8 +882,8 @@ html = f"""<!DOCTYPE html>
     </div>
   </div>
   <div class="ft-bot">
-    <span>Always verify against official sources before regulatory use.</span>
-    <span>Auto-updates daily via GitHub Actions · Built with Groq AI + Python</span>
+    <span>AI-assisted analysis is a screening aid, not validated, and not a substitute for the official source.</span>
+    <span>Auto-updates daily via GitHub Actions · Built with Python + Groq (GPT-OSS 20B)</span>
   </div>
 </footer>
  
@@ -735,4 +895,3 @@ with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
  
 print(f"\n✓ Website saved — {len(all_entries)} entries ({len(raw_entries)} raw, {len(raw_entries)-len(all_entries)} deduplicated, {len(consultations)} consultations)")
- 
