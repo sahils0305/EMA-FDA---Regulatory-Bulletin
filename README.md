@@ -25,10 +25,6 @@ Regulatory Affairs teams spend significant time checking health-authority websit
 | TGA | Australia | RSS |
 | WHO | Global | RSS |
 
-TGA and WHO restrict automated access and can be unreliable. The live **Source Health** panel on the site shows each source as *Operational*, *No new updates* or *Failed*, so gaps are visible rather than hidden.
-
-Not included: IMDRF (its feed has been inactive since 2021) and ICH (no official RSS feed).
-
 ---
 
 ## Features
