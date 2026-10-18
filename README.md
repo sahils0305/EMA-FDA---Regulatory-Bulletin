@@ -22,8 +22,9 @@ Regulatory Affairs teams spend significant time checking health-authority websit
 | FDA – Press Releases | US | RSS |
 | MHRA (MedRegs blog) | UK | RSS |
 | Health Canada | Canada | RSS |
-| TGA | Australia | RSS |
 | WHO | Global | RSS |
+
+WHO requires a browser-style request header to return its feed. The live **Source Health** panel on the site shows each source as *Operational*, *No new updates* or *Failed*, so gaps are visible rather than hidden.
 
 ---
 
