@@ -12,7 +12,7 @@ socket.setdefaulttimeout(60)
 
 MODEL = "openai/gpt-oss-20b"
 PROMPT_VERSION = "v2"
-# Some regulators (e.g. WHO, TGA) refuse requests that do not look like a browser
+# Only WHO needs this. FDA redirects browser-style requests, so it uses the default.
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
 ALLOWED_TYPES = ["Guideline", "Safety Alert", "Approval", "Consultation", "Withdrawal", "Policy Change", "Procedural"]
@@ -78,12 +78,10 @@ FEEDS = [
      "label": "FDA", "color": "#F87171", "glow": "rgba(248,113,113,0.18)", "bg": "rgba(248,113,113,0.1)"},
     {"url": "https://medregs.blog.gov.uk/feed/",
      "label": "MHRA", "color": "#34D399", "glow": "rgba(52,211,153,0.18)", "bg": "rgba(52,211,153,0.1)"},
-    {"url": "https://www.tga.gov.au/feeds/article.xml",
-     "label": "TGA", "color": "#C084FC", "glow": "rgba(192,132,252,0.18)", "bg": "rgba(192,132,252,0.1)"},
     {"url": "https://www.canada.ca/content/dam/hc-sc/migration/hc-sc/rss/dhp-mps/prod-eng.xml",
      "label": "Health Canada", "color": "#FB923C", "glow": "rgba(251,146,60,0.18)", "bg": "rgba(251,146,60,0.1)"},
     {"url": "https://www.who.int/rss-feeds/news-english.xml",
-     "label": "WHO", "color": "#38BDF8", "glow": "rgba(56,189,248,0.18)", "bg": "rgba(56,189,248,0.1)"},
+     "label": "WHO", "color": "#38BDF8", "glow": "rgba(56,189,248,0.18)", "bg": "rgba(56,189,248,0.1)", "browser": True},
 ]
  
 cutoff = datetime.now(timezone.utc) - timedelta(days=30)
@@ -96,7 +94,7 @@ for feed_info in FEEDS:
               "latest_item": None, "http_status": None, "error": None}
     latest_dt = None
     try:
-        feed = feedparser.parse(feed_info["url"], request_headers=HEADERS)
+        feed = feedparser.parse(feed_info["url"], request_headers=HEADERS if feed_info.get("browser") else None)
         health["http_status"] = feed.get("status")
         health["items_total"] = len(feed.entries)
         if feed.get("bozo") and not feed.entries:
